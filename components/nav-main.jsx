@@ -34,7 +34,7 @@ export function NavMain() {
             </a>
           </SidebarMenuButton>
         </SidebarMenuItem>
-
+{/* hi */}
         <SidebarMenuItem>
           <SidebarMenuButton asChild>
             <a href="/tasks" className="flex items-center gap-2">
