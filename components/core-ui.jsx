@@ -1,5 +1,3 @@
-"use client";
-
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
@@ -18,7 +16,7 @@ import {
 import { usePathname } from "next/navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-export default function CoreUI({ children }) {
+export function CoreUI({ children }) {
   const pathname = usePathname() || "/";
 
   // Split URL and remove empty segments
@@ -51,19 +49,18 @@ export default function CoreUI({ children }) {
               <BreadcrumbItem>
                 <BreadcrumbLink href="/">Home</BreadcrumbLink>
               </BreadcrumbItem>
-              <BreadcrumbSeparator />
 
               {breadcrumbs.map((bc, idx) => (
-                <BreadcrumbItem key={idx}>
-                  {bc.isLast ? (
-                    <BreadcrumbPage>{bc.name}</BreadcrumbPage>
-                  ) : (
-                    <>
+                <React.Fragment key={idx}>
+                  {idx > 0 && <BreadcrumbSeparator />}
+                  <BreadcrumbItem>
+                    {bc.isLast ? (
+                      <BreadcrumbPage>{bc.name}</BreadcrumbPage>
+                    ) : (
                       <BreadcrumbLink href={bc.href}>{bc.name}</BreadcrumbLink>
-                      <BreadcrumbSeparator />
-                    </>
-                  )}
-                </BreadcrumbItem>
+                    )}
+                  </BreadcrumbItem>
+                </React.Fragment>
               ))}
             </BreadcrumbList>
           </Breadcrumb>

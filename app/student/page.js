@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
-import { supabase } from "@/lib/utils"
+import { supabase } from "@/lib/supabase"
 import { useUser } from "@clerk/nextjs"
 
 export default function Page() {

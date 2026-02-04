@@ -9,6 +9,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export function NavMain() {
   return (
@@ -18,39 +19,39 @@ export function NavMain() {
         {/* Jobs */}
         <SidebarMenuItem>
           <SidebarMenuButton asChild>
-            <a href="/jobs" className="flex items-center gap-2">
+            <Link href="/jobs" className="flex items-center gap-2">
               <Briefcase className="h-4 w-4" />
               <span>Jobs</span>
-            </a>
+            </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
 
         {/* Events */}
         <SidebarMenuItem>
           <SidebarMenuButton asChild>
-            <a href="/events" className="flex items-center gap-2">
+            <Link href="/events" className="flex items-center gap-2">
               <Calendars className="h-4 w-4" />
               <span>Events</span>
-            </a>
+            </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
 {/* hi */}
         <SidebarMenuItem>
           <SidebarMenuButton asChild>
-            <a href="/tasks" className="flex items-center gap-2">
+            <Link href="/tasks" className="flex items-center gap-2">
               <ListTodo className="h-4 w-4" />
               <span>Tasks</span>
-            </a>
+            </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
 
         {/* Organizations */}
         <SidebarMenuItem>
           <SidebarMenuButton asChild>
-            <a href="/organizations" className="flex items-center gap-2">
+            <Link href="/organizations" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               <span>Organizations</span>
-            </a>
+            </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>
