@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:opsz,wght@6..144,1..1000&display=swap');
+
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -47,8 +49,9 @@
 }
 
 body {
-  background: var(--foreground);
-  color: var(--background);
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Google Sans", "sans-serif";
 }
 
 :root {
