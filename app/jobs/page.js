@@ -37,7 +37,7 @@ const jobs = [
 
 export default function JobsPage() {
   return (
-    <div className="container py-12 max-w-5xl">
+    <div className="py-12 w-full">
       <div className="mb-10">
         <h1 className="text-2xl font-semibold tracking-tight text-whit">
           Job Opportunities
@@ -47,9 +47,9 @@ export default function JobsPage() {
         </p>
       </div>
 
-      <div className="space-y-6">
+      <div className="grid gap-6 md:grid-cols-2">
         {jobs.map(job => (
-          <Card key={job.id} className="hover:shadow-sm transition">
+          <Card key={job.id} className="hover:shadow-sm transition w-full flex flex-col">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">
                 {job.title}

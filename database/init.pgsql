@@ -13,6 +13,7 @@ CREATE TABLE public.alumni (
   CONSTRAINT alumni_pkey PRIMARY KEY (id),
   CONSTRAINT alumni_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
+
 CREATE TABLE public.applications (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   job_id uuid NOT NULL,

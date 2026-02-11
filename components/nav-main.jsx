@@ -36,14 +36,6 @@ export function NavMain() {
           </SidebarMenuButton>
         </SidebarMenuItem>
 {/* hi */}
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild>
-            <Link href="/tasks" className="flex items-center gap-2">
-              <ListTodo className="h-4 w-4" />
-              <span>Tasks</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
 
         {/* Organizations */}
         <SidebarMenuItem>
@@ -51,6 +43,15 @@ export function NavMain() {
             <Link href="/organizations" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               <span>Organizations</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      <SidebarGroupLabel>By Team</SidebarGroupLabel>
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild>
+            <Link href="/tasks" className="flex items-center gap-2">
+              <ListTodo className="h-4 w-4" />
+              <span>Tasks</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>

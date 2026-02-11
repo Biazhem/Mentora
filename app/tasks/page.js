@@ -6,10 +6,10 @@ import {
   CardHeader,
   CardTitle,
   CardContent,
+  CardFooter,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectTrigger,
@@ -18,7 +18,12 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { AvatarFallback, AvatarGroup, AvatarImage, Avatar } from "@/components/ui/avatar";
 
 const tasksData = [
   {
@@ -46,54 +51,80 @@ const tasksData = [
 
 export default function TasksPage() {
   const [statusFilter, setStatusFilter] = useState("all");
-  const [startDate, setStartDate] = useState();
-  const [dueDate, setDueDate] = useState();
+  const [dateRange, setDateRange] = useState();
 
+  // ✅ Filter Logic
   const filteredTasks = tasksData.filter((task) => {
-    return statusFilter === "all" || task.status === statusFilter;
+    const taskStart = new Date(task.startDate);
+
+    const statusMatch = statusFilter === "all" || task.status === statusFilter;
+
+    const rangeMatch =
+      !dateRange?.from ||
+      (taskStart >= dateRange.from &&
+        taskStart <= (dateRange.to || dateRange.from));
+
+    return statusMatch && rangeMatch;
   });
 
   return (
-    <div className="max-w-6xl py-12 px-4">
+    <div className="py-12 px-4">
       <h1 className="text-2xl font-semibold mb-6">Tasks</h1>
 
       {/* Filters */}
-      <div className="grid md:grid-cols-3 gap-4 mb-8">
+      <div className="flex justify-between mb-8 gap-4 flex-wrap">
+        {/* Status Filter */}
         <Select onValueChange={setStatusFilter} defaultValue="all">
           <SelectTrigger>
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="Pending">Pending</SelectItem>
             <SelectItem value="In Progress">In Progress</SelectItem>
             <SelectItem value="Completed">Completed</SelectItem>
           </SelectContent>
         </Select>
 
-        {/* Start Date */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline">
-              {startDate ? startDate.toDateString() : "Select Start Date"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent>
-            <Calendar mode="single" selected={startDate} onSelect={setStartDate} />
-          </PopoverContent>
-        </Popover>
+        {/* Date Range Filter */}
+        <div className="flex gap-2 items-center">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline">
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    <>
+                      {dateRange.from.toDateString()} -{" "}
+                      {dateRange.to.toDateString()}
+                    </>
+                  ) : (
+                    dateRange.from.toDateString()
+                  )
+                ) : (
+                  "Select Date Range"
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="range"
+                numberOfMonths={2}
+                selected={dateRange}
+                onSelect={setDateRange}
+              />
+            </PopoverContent>
+          </Popover>
 
-        {/* Due Date */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline">
-              {dueDate ? dueDate.toDateString() : "Select Due Date"}
+          {/* Clear Button */}
+          {dateRange && (
+            <Button
+              variant="destructive"
+              onClick={() => setDateRange(undefined)}
+            >
+              Clear
             </Button>
-          </PopoverTrigger>
-          <PopoverContent>
-            <Calendar mode="single" selected={dueDate} onSelect={setDueDate} />
-          </PopoverContent>
-        </Popover>
+          )}
+        </div>
       </div>
 
       {/* Tasks List */}
@@ -118,18 +149,41 @@ export default function TasksPage() {
               <Badge
                 variant={
                   task.status === "Completed"
-                    ? "success"
-                    : task.status === "In Progress"
                     ? "default"
-                    : "secondary"
+                    : task.status === "In Progress"
+                      ? "secondary"
+                      : "destructive"
                 }
               >
                 {task.status}
               </Badge>
-
-              {/* File Upload */}
-              <Input type="file" />
             </CardContent>
+            <CardFooter className={"flex flex-col items-start justify-start gap-2"}>
+              <span>Assignees</span>
+              <AvatarGroup >
+                <Avatar size="sm">
+                  <AvatarImage
+                    src="https://github.com/shadcn.png"
+                    alt="@shadcn"
+                  />
+                  <AvatarFallback>CN</AvatarFallback>
+                </Avatar>
+                <Avatar size="sm">
+                  <AvatarImage
+                    src="https://github.com/maxleiter.png"
+                    alt="@maxleiter"
+                  />
+                  <AvatarFallback>LR</AvatarFallback>
+                </Avatar>
+                <Avatar size="sm">
+                  <AvatarImage
+                    src="https://github.com/evilrabbit.png"
+                    alt="@evilrabbit"
+                  />
+                  <AvatarFallback>ER</AvatarFallback>
+                </Avatar>
+              </AvatarGroup>
+            </CardFooter>
           </Card>
         ))}
       </div>
