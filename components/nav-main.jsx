@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Briefcase, Calendars, ListTodo, Building2 } from "lucide-react";
+import { ChevronRight, Briefcase, Calendar, ListTodo, Building2 } from "lucide-react";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -30,7 +30,7 @@ export function NavMain() {
         <SidebarMenuItem>
           <SidebarMenuButton asChild>
             <Link href="/events" className="flex items-center gap-2">
-              <Calendars className="h-4 w-4" />
+              <Calendar className="h-4 w-4" />
               <span>Events</span>
             </Link>
           </SidebarMenuButton>
