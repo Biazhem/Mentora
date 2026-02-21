@@ -35,6 +35,10 @@ export default function CoreUI({ children }) {
   });
   const { isMobile } = useIsMobile();
 
+  if (pathname === "/") {
+    return <main className="w-full">{children}</main>;
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />
