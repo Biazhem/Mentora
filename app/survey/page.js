@@ -16,19 +16,19 @@ export default function Page() {
     {
       title: "Organization",
       desc: "Post jobs, manage teams, hire talent",
-      url: "/organization",
+      url: "/survey/organization",
       highlight: false,
     },
     {
       title: "Alumni / Student / User",
       desc: "Apply for jobs, connect with mentors",
-      url: "/student",
+      url: "/survey/student",
       highlight: true,
     },
     {
       title: "Mentor",
       desc: "Guide students, share experience",
-      url: "/mentor",
+      url: "/survey/mentor",
       highlight: false,
     },
   ]

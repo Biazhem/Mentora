@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sidebar";
 import { usePathname } from "next/navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
+import React from "react";
 
 export function CoreUI({ children }) {
   const pathname = usePathname() || "/";

@@ -60,7 +60,7 @@ export function Header() {
               <NavigationMenuItem>
                 <NavigationMenuTrigger>Explore</NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                  <ul className="grid w-400px gap-3 p-4 md:w-500px md:grid-cols-2 lg:w-600px">
                     {components.map((component) => (
                       <ListItem
                         key={component.title}
@@ -126,7 +126,7 @@ export function Header() {
 
 const ListItem = React.forwardRef(({ className, title, children, icon, ...props }, ref) => {
   return (
-    <li>
+
       <NavigationMenuLink asChild>
         <a
           ref={ref}
@@ -145,7 +145,6 @@ const ListItem = React.forwardRef(({ className, title, children, icon, ...props 
           </p>
         </a>
       </NavigationMenuLink>
-    </li>
   );
 });
 ListItem.displayName = "ListItem";
