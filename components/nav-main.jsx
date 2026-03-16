@@ -8,8 +8,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { MessageCircleMoreIcon } from "lucide-react";
 
 export function NavMain() {
   return (
@@ -52,6 +52,15 @@ export function NavMain() {
             <Link href="/tasks" className="flex items-center gap-2">
               <ListTodo className="h-4 w-4" />
               <span>Tasks</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild>
+            <Link href="/discussion" className="flex items-center gap-2">
+              <MessageCircleMoreIcon className="h-4 w-4" />
+              <span>Discussion</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>

@@ -24,6 +24,7 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 import { AvatarFallback, AvatarGroup, AvatarImage, Avatar } from "@/components/ui/avatar";
+import { X } from "lucide-react";
 
 const tasksData = [
   {
@@ -121,6 +122,7 @@ export default function TasksPage() {
               variant="destructive"
               onClick={() => setDateRange(undefined)}
             >
+              <X/>
               Clear
             </Button>
           )}

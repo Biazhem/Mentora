@@ -32,11 +32,13 @@ import { SignOutButton } from "@clerk/nextjs";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "./ui/button";
 import { ThemeSwitcher } from "./theme-switcher";
+import Link from "next/link";
 
 export function NavUser() {
   const { isMobile } = useSidebar();
   const { user, isLoaded } = useUser();
 
+  
   if (!isLoaded) {
     return <p>loading</p>;
   }
@@ -111,10 +113,12 @@ export function NavUser() {
             <DropdownMenuSeparator />
 
             <DropdownMenuGroup>
+                <Link href="/profile">
               <DropdownMenuItem>
                 <BadgeCheck />
                 Profile
               </DropdownMenuItem>
+                </Link>
               <DropdownMenuItem>
                 <Bell />
                 Notifications
