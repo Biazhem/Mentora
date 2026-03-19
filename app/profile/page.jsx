@@ -7,9 +7,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback , AvatarImage} from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+
 
 import {
   Mail,
@@ -20,31 +21,50 @@ import {
   Edit,
 } from "lucide-react";
 import { Calendar } from "lucide-react";
-
-const user = {
-  name: "Alex Thompson",
-  role: "Student",
-  email: "alex@example.com",
-  phone: "+92 300 1234567",
-  location: "Islamabad, Pakistan",
-  university: "Islamic International University",
-  skills: ["React", "Next.js", "UI Design", "Java"],
-};
+import { useUser } from "@clerk/nextjs";
+import { EmailAddress } from "@clerk/nextjs/server";
 
 export default function Page() {
+  const { user, isLoaded } = useUser();
+
+  const userData = {
+    name: user?.fullName,
+    role: "Student",
+    email: user?.primaryEmailAddress?.emailAddress,
+    phone: "+92 300 1234567",
+    location: "Islamabad, Pakistan",
+    university: "Islamic International University",
+    skills: ["React", "Next.js", "UI Design", "Java"],
+    imageUrl: user?.imageUrl
+  };
+
+  if (!isLoaded) {
+    return <p>loading</p>;
+  }
+
+  if (!user) {
+    return null;
+  }
   return (
     <div className="grid gap-6 md:grid-cols-3 h-full">
       {/* LEFT PROFILE CARD */}
 
       <Card>
         <CardContent className="flex flex-col items-center text-center p-6">
-          <Avatar className="h-24 w-24 mb-4">
-            <AvatarFallback className="text-xl">AT</AvatarFallback>
+          <Avatar className="h-44 w-44 mb-4 rounded-lg">
+            <AvatarImage
+              src={userData.imageUrl}
+              alt={userData.fullName ?? "User"}
+              className="rounded-full"
+            />
+            <AvatarFallback className="rounded-lg">
+              {userData.firstName?.charAt(0)}
+            </AvatarFallback>
           </Avatar>
 
-          <h2 className="text-xl font-semibold">{user.name}</h2>
+          <h2 className="text-xl font-semibold">{userData.name}</h2>
 
-          <Badge className="mt-2">{user.role}</Badge>
+          <Badge className="mt-2">{userData.role}</Badge>
 
           <Button className="mt-4 w-full">
             <Edit className="mr-2 h-4 w-4" />
@@ -66,17 +86,17 @@ export default function Page() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
               <Mail className="h-4 w-4 text-muted-foreground" />
-              <span>{user.email}</span>
+              <span>{userData.email}</span>
             </div>
 
             <div className="flex items-center gap-3">
               <Phone className="h-4 w-4 text-muted-foreground" />
-              <span>{user.phone}</span>
+              <span>{userData.phone}</span>
             </div>
 
             <div className="flex items-center gap-3">
               <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span>{user.location}</span>
+              <span>{userData.location}</span>
             </div>
           </CardContent>
         </Card>
@@ -92,7 +112,7 @@ export default function Page() {
             <GraduationCap className="h-5 w-5 text-muted-foreground" />
 
             <div>
-              <p className="font-medium">{user.university}</p>
+              <p className="font-medium">{userData.university}</p>
 
               <p className="text-sm text-muted-foreground">
                 BS Software Engineering
@@ -109,7 +129,7 @@ export default function Page() {
           </CardHeader>
 
           <CardContent className="flex flex-wrap gap-2">
-            {user.skills.map((skill, i) => (
+            {userData.skills.map((skill, i) => (
               <Badge key={i} variant="secondary">
                 {skill}
               </Badge>

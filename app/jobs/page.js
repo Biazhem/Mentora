@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   Card,
@@ -7,10 +7,10 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 const jobs = [
   {
@@ -21,7 +21,6 @@ const jobs = [
     type: "Internship",
     description:
       "Join the frontend team to build clean, accessible interfaces using React and modern UI tools.",
-    applyLink: "/jobs/1/apply",
   },
   {
     id: 2,
@@ -30,10 +29,9 @@ const jobs = [
     location: "Islamabad",
     type: "Full Time",
     description:
-      "Work on scalable APIs and databases using Node.js and PostgreSQL.",
-    applyLink: "/jobs/2/apply",
+      "Work on scalable APIs and databases using Node.js and PostgreSQL."
   },
-]
+];
 
 export default function JobsPage() {
   return (
@@ -48,42 +46,35 @@ export default function JobsPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {jobs.map(job => (
-          <Card key={job.id} className="hover:shadow-sm transition w-full flex flex-col">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">
-                {job.title}
-              </CardTitle>
-              <CardDescription className="text-sm">
-                <Link href={`/organizations/${job.company}`}>{job.company}</Link>, {job.location}
-              </CardDescription>
-            </CardHeader>
+        {jobs.map((job) => (
+          <Link href={`/jobs/details?det=${job.id}`}>
+            <Card
+              key={job.id}
+              className="hover:shadow-sm transition w-full flex flex-col"
+            >
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">{job.title}</CardTitle>
+                <CardDescription className="text-sm">
+                  <Link href={`/organizations/${job.company}`}>
+                    {job.company}
+                  </Link>
+                  , {job.location}
+                </CardDescription>
+              </CardHeader>
 
-            <CardContent className="pt-0">
-              <p className="text-sm text-muted-foreground mb-4 max-w-3xl">
-                {job.description}
-              </p>
+              <CardContent className="pt-0">
+                <p className="text-sm text-muted-foreground mb-4 max-w-3xl">
+                  {job.description}
+                </p>
 
-              <span className="inline-flex text-xs font-medium px-3 py-1 rounded-full bg-secondary">
-                {job.type}
-              </span>
-            </CardContent>
-
-            <CardFooter className="flex justify-end gap-3">
-              <Button variant="outline">
-                View Details
-              </Button>
-
-              <Button asChild>
-                <a href={job.applyLink}>
-                  Apply
-                </a>
-              </Button>
-            </CardFooter>
-          </Card>
+                <span className="inline-flex text-xs font-medium px-3 py-1 rounded-full bg-secondary">
+                  {job.type}
+                </span>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
     </div>
-  )
+  );
 }
-
