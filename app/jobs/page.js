@@ -11,6 +11,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 
 const jobs = [
   {
@@ -29,17 +30,26 @@ const jobs = [
     location: "Islamabad",
     type: "Full Time",
     description:
-      "Work on scalable APIs and databases using Node.js and PostgreSQL."
+      "Work on scalable APIs and databases using Node.js and PostgreSQL.",
   },
 ];
 
 export default function JobsPage() {
   return (
-    <div className="py-12 w-full">
+    <div className="w-full">
       <div className="mb-10">
-        <h1 className="text-2xl font-semibold tracking-tight text-whit">
-          Job Opportunities
-        </h1>
+        <div className="w-full flex justify-between">
+          <p className="text-2xl font-semibold tracking-tight">
+            Job Opportunities
+          </p>
+          {/* Create a Job */}
+          <Link href={"/jobs/create"}>
+            <Button size="lg">
+              <Plus />
+              Create
+            </Button>
+          </Link>
+        </div>
         <p className="text-sm text-muted-foreground mt-1">
           Carefully selected roles to help you grow your career
         </p>

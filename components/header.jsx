@@ -95,7 +95,7 @@ export function Header() {
         <div className="flex items-center gap-4">
           <SignedOut>
             <div className="flex items-center gap-2">
-              <SignInButton mode="modal">
+              <SignInButton mode="modal" forceRedirectUrl={"/callback"}>
                 <Button variant="ghost" size="sm">Log in</Button>
               </SignInButton>
               <SignUpButton mode="modal">
