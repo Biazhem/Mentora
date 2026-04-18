@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/sidebar";
 import Link from "next/link";
 import { MessageCircleMoreIcon } from "lucide-react";
+import { University } from "lucide-react";
 
 export function NavMain() {
   return (
@@ -43,6 +44,14 @@ export function NavMain() {
             <Link href="/organizations" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               <span>Organizations</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild>
+            <Link href="/mentors" className="flex items-center gap-2">
+              <University className="h-4 w-4" />
+              <span>Mentors</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>

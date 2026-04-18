@@ -40,6 +40,16 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-sky-50: var(--sky-50);
+  --color-sky-100: var(--sky-100);
+  --color-sky-200: var(--sky-200);
+  --color-sky-300: var(--sky-300);
+  --color-sky-400: var(--sky-400);
+  --color-sky-500: var(--sky-500);
+  --color-sky-600: var(--sky-600);
+  --color-sky-700: var(--sky-700);
+  --color-sky-800: var(--sky-800);
+  --color-sky-900: var(--sky-900);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -86,6 +96,17 @@ body {
   --sidebar-ring: oklch(0.708 0 0);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
+  /* Sky Blue Light Mode */
+  --sky-50: oklch(0.975 0.018 239.255);
+  --sky-100: oklch(0.952 0.034 239.255);
+  --sky-200: oklch(0.907 0.063 239.255);
+  --sky-300: oklch(0.849 0.097 239.255);
+  --sky-400: oklch(0.762 0.145 239.255);
+  --sky-500: oklch(0.708 0.150 239.255);
+  --sky-600: oklch(0.638 0.145 239.255);
+  --sky-700: oklch(0.546 0.140 239.255);
+  --sky-800: oklch(0.481 0.115 239.255);
+  --sky-900: oklch(0.424 0.093 239.255);
 }
 
 .dark {
@@ -120,6 +141,17 @@ body {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  /* Sky Blue Dark Mode */
+  --sky-50: oklch(0.172 0.015 239.255);
+  --sky-100: oklch(0.215 0.025 239.255);
+  --sky-200: oklch(0.269 0.049 239.255);
+  --sky-300: oklch(0.333 0.075 239.255);
+  --sky-400: oklch(0.435 0.115 239.255);
+  --sky-500: oklch(0.554 0.145 239.255);
+  --sky-600: oklch(0.618 0.150 239.255);
+  --sky-700: oklch(0.680 0.140 239.255);
+  --sky-800: oklch(0.738 0.115 239.255);
+  --sky-900: oklch(0.815 0.093 239.255);
 }
 
 @layer base {

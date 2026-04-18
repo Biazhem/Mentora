@@ -19,51 +19,27 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { ButtonGroup } from "@/components/ui/button-group";
-
-const organizations = [
-  {
-    id: 1,
-    slug: "technova",
-    name: "TechNova",
-    industry: "Software & IT",
-    location: "Remote",
-    university: "FAST National University",
-    description:
-      "TechNova partners with Mentora to provide internships and mentorship programs.",
-  },
-  {
-    id: 2,
-    slug: "datasphere",
-    name: "DataSphere",
-    industry: "Data & Analytics",
-    location: "Islamabad",
-    university: "NUST",
-    description:
-      "DataSphere collaborates with Mentora to offer project-based learning.",
-  },
-  {
-    id: 3,
-    slug: "innoworks",
-    name: "InnoWorks",
-    industry: "Startup & Innovation",
-    location: "Lahore",
-    university: "University of Lahore",
-    description:
-      "InnoWorks helps students enter startup environments through mentorship.",
-  },
-];
+import { data } from "@/config/data";
 
 export default function OrganizationsPage() {
   const [search, setSearch] = useState("");
   const [industry, setIndustry] = useState("all");
-  const [university, setUniversity] = useState("all");
+
+  // Transform mock data to match component structure
+  const organizations = data.organizations.map((org, idx) => ({
+    id: idx + 1,
+    slug: org.name.toLowerCase().replace(/\s+/g, "-"),
+    name: org.name,
+    pic: org.logo,
+    category: org.category,
+    location: "Remote",
+    description: org.description,
+  }));
 
   const filteredOrganizations = organizations.filter((org) => {
     return (
       org.name.toLowerCase().includes(search.toLowerCase()) &&
-      (industry === "all" || org.industry === industry) &&
-      (university === "all" || org.university === university)
+      (industry === "all" || org.category === industry)
     );
   });
 
@@ -83,63 +59,46 @@ export default function OrganizationsPage() {
         <div className="flex gap-2">
           <Select onValueChange={setIndustry} defaultValue="all">
             <SelectTrigger>
-              <SelectValue placeholder="Industry" />
+              <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Industries</SelectItem>
-              <SelectItem value="Software & IT">Software & IT</SelectItem>
-              <SelectItem value="Data & Analytics">Data & Analytics</SelectItem>
-              <SelectItem value="Startup & Innovation">
-                Startup & Innovation
+              <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem value="Information Technology">
+                Information Technology
               </SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select onValueChange={setUniversity} defaultValue="all">
-            <SelectTrigger>
-              <SelectValue placeholder="University" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Universities</SelectItem>
-              <SelectItem value="FAST National University">
-                FAST National University
+              <SelectItem value="Artificial Intelligence">
+                Artificial Intelligence
               </SelectItem>
-              <SelectItem value="NUST">NUST</SelectItem>
-              <SelectItem value="University of Lahore">
-                University of Lahore
-              </SelectItem>
+              <SelectItem value="Software">Software</SelectItem>
+              <SelectItem value="SaaS">SaaS</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      <div className="mx-aut px-4 grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="mx-auto px-4 grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredOrganizations.map((org) => (
-          <Card key={org.id}>
-            <CardHeader>
+          <Card key={org.id} className={"hover:shadow-sm cursor-pointer"}>
+            <CardHeader className="w-full flex gap-2">
+              <div className="w-12 h-12 rounded-md overflow-hidden bg-gray-100 shrink">
+                <img
+                  src={org.pic}
+                  alt={org.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
               <Link href={`/organizations/${org.slug}`}>
                 <CardTitle className="hover:underline cursor-pointer">
                   {org.name}
                 </CardTitle>
+                <CardDescription className={"line-clamp-2"}>{org.category}</CardDescription>
               </Link>
-              <CardDescription>{org.industry}</CardDescription>
             </CardHeader>
 
             <CardContent>
               <p className="text-sm text-muted-foreground">{org.description}</p>
               <p className="text-sm mt-2">Location: {org.location}</p>
-              <p className="text-sm">University: {org.university}</p>
             </CardContent>
-
-            <CardFooter className="flex flex-col gap-2">
-              <Button asChild variant="outline">
-                <Link href={`/organizations/${org.slug}`}>View Profile</Link>
-              </Button>
-
-              <Button asChild>
-                <Link href={`/jobs?org=${org.slug}`}>View Opportunities</Link>
-              </Button>
-            </CardFooter>
           </Card>
         ))}
       </div>

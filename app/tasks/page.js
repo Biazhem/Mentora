@@ -23,13 +23,21 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-import { AvatarFallback, AvatarGroup, AvatarImage, Avatar } from "@/components/ui/avatar";
+import {
+  AvatarFallback,
+  AvatarGroup,
+  AvatarImage,
+  Avatar,
+} from "@/components/ui/avatar";
 import { X } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 const tasksData = [
   {
     id: 1,
     title: "Build Login Page",
+    description:
+      "Create a responsive login page with email and password fields, validation, error handling, and integration with authentication API. Ensure proper UI feedback and loading states.",
     status: "In Progress",
     startDate: "2026-02-01",
     dueDate: "2026-02-10",
@@ -37,6 +45,8 @@ const tasksData = [
   {
     id: 2,
     title: "Resume Analyzer Integration",
+    description:
+      "Integrate resume parsing API to analyze uploaded CVs. Extract skills, experience, and education data, then display structured insights to users in a clean dashboard format.",
     status: "Pending",
     startDate: "2026-02-05",
     dueDate: "2026-02-15",
@@ -44,9 +54,29 @@ const tasksData = [
   {
     id: 3,
     title: "Final Project Report",
+    description:
+      "Prepare and submit the final project report including system design, implementation details, screenshots, and testing results. Follow proper formatting and documentation standards.",
     status: "Completed",
     startDate: "2026-01-10",
     dueDate: "2026-01-25",
+  },
+  {
+    id: 4,
+    title: "Dashboard UI Design",
+    description:
+      "Design and implement the main dashboard interface with charts, stats cards, and recent activity. Focus on clean layout, responsiveness, and usability.",
+    status: "In Progress",
+    startDate: "2026-02-08",
+    dueDate: "2026-02-18",
+  },
+  {
+    id: 5,
+    title: "API Optimization",
+    description:
+      "Improve backend API performance by reducing response time, optimizing queries, and adding caching where necessary. Test endpoints under load.",
+    status: "Pending",
+    startDate: "2026-02-12",
+    dueDate: "2026-02-20",
   },
 ];
 
@@ -122,7 +152,7 @@ export default function TasksPage() {
               variant="destructive"
               onClick={() => setDateRange(undefined)}
             >
-              <X/>
+              <X />
               Clear
             </Button>
           )}
@@ -138,31 +168,29 @@ export default function TasksPage() {
             </CardHeader>
 
             <CardContent className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span>Start:</span>
-                <span>{task.startDate}</span>
-              </div>
+              <div className="text-sm line-clamp-1">{ task.description }</div>
 
-              <div className="flex justify-between text-sm">
-                <span>Due:</span>
-                <span>{task.dueDate}</span>
+              <div className="w-full flex gap-2">
+                <Badge
+                  variant={
+                    task.status === "Completed"
+                      ? "default"
+                      : task.status === "In Progress"
+                        ? "secondary"
+                        : "destructive"
+                  }
+                >
+                  {task.status}
+                </Badge>
+                <Separator orientation="vertical" />
+                <Badge>{task.startDate}</Badge> - <Badge>{task.dueDate}</Badge>
               </div>
-
-              <Badge
-                variant={
-                  task.status === "Completed"
-                    ? "default"
-                    : task.status === "In Progress"
-                      ? "secondary"
-                      : "destructive"
-                }
-              >
-                {task.status}
-              </Badge>
             </CardContent>
-            <CardFooter className={"flex flex-col items-start justify-start gap-2"}>
+            <CardFooter
+              className={"flex flex-col items-start justify-start gap-2"}
+            >
               <span>Assignees</span>
-              <AvatarGroup >
+              <AvatarGroup>
                 <Avatar size="sm">
                   <AvatarImage
                     src="https://github.com/shadcn.png"

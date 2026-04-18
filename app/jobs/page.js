@@ -12,29 +12,19 @@ import {
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Plus } from "lucide-react";
-
-const jobs = [
-  {
-    id: 1,
-    title: "Frontend Developer Intern",
-    company: "TechNova",
-    location: "Remote",
-    type: "Internship",
-    description:
-      "Join the frontend team to build clean, accessible interfaces using React and modern UI tools.",
-  },
-  {
-    id: 2,
-    title: "Junior Backend Developer",
-    company: "DataSphere",
-    location: "Islamabad",
-    type: "Full Time",
-    description:
-      "Work on scalable APIs and databases using Node.js and PostgreSQL.",
-  },
-];
+import { data } from "@/config/data";
 
 export default function JobsPage() {
+  // Transform mock data to match component structure
+  const jobs = data.jobs.map((job, idx) => ({
+    id: idx + 1,
+    title: job.title,
+    company: data.organizations[job.org_index].name,
+    companySlug: data.organizations[job.org_index].name.toLowerCase().replace(/\s+/g, '-'),
+    location: "Remote",
+    type: job.type[0],
+    description: job.description,
+  }));
   return (
     <div className="w-full">
       <div className="mb-10">
@@ -57,15 +47,12 @@ export default function JobsPage() {
 
       <div className="grid gap-6 md:grid-cols-2">
         {jobs.map((job) => (
-          <Link href={`/jobs/details?det=${job.id}`}>
-            <Card
-              key={job.id}
-              className="hover:shadow-sm transition w-full flex flex-col"
-            >
+          <Link key={job.id} href={`/jobs/details?det=${job.id}`}>
+            <Card className="hover:shadow-sm transition w-full flex flex-col">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">{job.title}</CardTitle>
                 <CardDescription className="text-sm">
-                  <Link href={`/organizations/${job.company}`}>
+                  <Link href={`/organizations/${job.companySlug}`}>
                     {job.company}
                   </Link>
                   , {job.location}
