@@ -30,15 +30,7 @@ export default function OnboardingsPage() {
       icon: GraduationCap,
       href: "/onboardings/student",
       color: "from-green-500 to-green-600",
-    },
-    {
-      id: "alumni",
-      title: "Alumni / User",
-      description: "I'm an alumnus or community member",
-      icon: Users,
-      href: "/onboardings/user",
-      color: "from-orange-500 to-orange-600",
-    },
+    }
   ]
 
   return (
@@ -53,7 +45,7 @@ export default function OnboardingsPage() {
         </div>
 
         {/* Role Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {roles.map((role) => {
             const IconComponent = role.icon
             return (
