@@ -1,38 +1,46 @@
 export const data = {
   organizations: [
     {
+      id: 1,
       name: "Acme Inc",
       description: "A computer science research company",
       logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlhthkE1qWPdzA3HWzdIifMnqqtuwEY_47Bw&s",
       website: "https://acme.com",
       category: "Information Technology",
+      location: "Islamabad, G-11"
     },
     {
+      id: 2, 
       name: "TechNova",
       logo: "https://cdn.dribbble.com/userupload/26694182/file/original-dc8c625e7aadcaec7cc34cd02b6ea171.jpg?format=webp&resize=400x300&vertical=center",
       description: "AI and cloud solutions",
       website: "https://technova.com",
       category: "Artificial Intelligence",
+      location: "Islamabad, G-11"
     },
     {
+      id: 3,
       name: "DevHub",
       logo: "https://cdn.dribbble.com/userupload/43761307/file/original-720c2a63362bf463692b662538e1bf78.png?format=webp&resize=400x300&vertical=center",
       description: "Developer community and tools",
       website: "https://devhub.com",
       category: "Software",
+      location: "Islamabad, G-11"
     },
     {
+      id: 4,
       logo: "https://images-platform.99static.com//7wYjfbypjySr9H_-VguhTcjPukg=/720x1171:1223x1674/fit-in/500x500/99designs-contests-attachments/115/115106/attachment_115106589",
       name: "InnoSoft",
       description: "Startup building SaaS products",
       website: "https://innosoft.com",
       category: "SaaS",
+      location: "Islamabad, G-11"
     },
   ],
   
   jobs: [
     {
-      org_index: 0,
+      org_index: 1,
       title: "Frontend Developer",
       description: "React developer needed",
       type: ["full-time"],
