@@ -77,29 +77,35 @@ export default function OrganizationsPage() {
       </div>
 
       <div className="mx-auto px-4 grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredOrganizations.map((org) => (
-          <Card key={org.id} className={"hover:shadow-sm cursor-pointer"}>
-            <CardHeader className="w-full flex gap-2">
-              <div className="w-12 h-12 rounded-md overflow-hidden bg-gray-100 shrink">
-                <img
-                  src={org.pic}
-                  alt={org.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <Link href={`/organizations/${org.slug}`}>
-                <CardTitle className="hover:underline cursor-pointer">
-                  {org.name}
-                </CardTitle>
-                <CardDescription className={"line-clamp-2"}>{org.category}</CardDescription>
-              </Link>
-            </CardHeader>
+        {filteredOrganizations.map((org,idx) => (
+          <Link key={org.name} href={`/organizations/${idx+1}`}>
+            <Card  className={"hover:shadow-sm cursor-pointer"}>
+              <CardHeader className="w-full flex gap-2">
+                <div className="w-12 h-12 rounded-md overflow-hidden bg-gray-100 shrink">
+                  <img
+                    src={org.pic}
+                    alt={org.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <Link href={`/organizations/${idx+1}`}>
+                  <CardTitle className="hover:underline cursor-pointer">
+                    {org.name}
+                  </CardTitle>
+                  <CardDescription className={"line-clamp-2"}>
+                    {org.category}
+                  </CardDescription>
+                </Link>
+              </CardHeader>
 
-            <CardContent>
-              <p className="text-sm text-muted-foreground">{org.description}</p>
-              <p className="text-sm mt-2">Location: {org.location}</p>
-            </CardContent>
-          </Card>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  {org.description}
+                </p>
+                <p className="text-sm mt-2">Location: {org.location}</p>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
     </div>
