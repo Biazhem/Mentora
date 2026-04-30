@@ -1,92 +1,97 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Building2, Users, Briefcase, GraduationCap } from "lucide-react"
+import Link from "next/link";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Building2, Briefcase, GraduationCap, ArrowRight } from "lucide-react";
 
 export default function OnboardingsPage() {
   const roles = [
     {
       id: "organization",
       title: "Organization",
-      description: "I'm representing a company or institution",
+      description: "Represent a company, research institution, or startup",
       icon: Building2,
       href: "/onboardings/organization",
-      color: "from-blue-500 to-blue-600",
+      color: "from-blue-600 to-cyan-500",
+      lightColor: "bg-blue-50",
+      textColor: "text-blue-700",
     },
     {
       id: "mentor",
-      title: "Mentor (Teacher)",
-      description: "I'm an experienced professional ready to guide others",
+      title: "Mentor",
+      description: "Share expertise, guide students, and lead sessions",
       icon: Briefcase,
       href: "/onboardings/mentor",
-      color: "from-purple-500 to-purple-600",
+      color: "from-purple-600 to-pink-500",
+      lightColor: "bg-purple-50",
+      textColor: "text-purple-700",
     },
     {
       id: "student",
       title: "Student",
-      description: "I'm looking to learn and grow with mentorship",
+      description: "Learn new skills, apply for jobs, and find mentorship",
       icon: GraduationCap,
       href: "/onboardings/student",
-      color: "from-green-500 to-green-600",
+      color: "from-emerald-600 to-teal-500",
+      lightColor: "bg-emerald-50",
+      textColor: "text-emerald-700",
     }
-  ]
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-slate-900 mb-3">Welcome to Mentora</h1>
-          <p className="text-lg text-slate-600">
-            Choose your profile type to get started
+    <div className="min-h-screen bg-slate-50/50 py-12 px-6">
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center justify-center px-4 py-1.5 mb-6 rounded-full bg-white border border-slate-200 shadow-sm">
+            <span className="text-sm font-medium bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Onboarding Process
+            </span>
+          </div>
+          <h1 className="text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
+            Welcome to Mentora
+          </h1>
+          <p className="text-xl text-slate-500 max-w-2xl mx-auto">
+            Choose the path that best fits your goals. We'll help you set up your profile in just a few steps.
           </p>
         </div>
 
-        {/* Role Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {roles.map((role) => {
-            const IconComponent = role.icon
+            const Icon = role.icon;
             return (
-              <Link key={role.id} href={role.href}>
-                <Card className="h-full hover:shadow-lg transition-all duration-300 cursor-pointer hover:border-slate-300">
-                  <CardHeader>
-                    {/* Icon Badge */}
-                    <div
-                      className={`w-12 h-12 rounded-lg bg-gradient-to-br ${role.color} flex items-center justify-center mb-4`}
-                    >
-                      <IconComponent className="w-6 h-6 text-white" />
+              <Link key={role.id} href={role.href} className="group">
+                <Card className="h-full border-slate-200/60 shadow-md hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                  <div className={`h-2 w-full bg-gradient-to-r ${role.color}`} />
+                  <CardHeader className="pt-8 text-center">
+                    <div className={`w-16 h-16 rounded-2xl ${role.lightColor} flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                      <Icon className={`w-8 h-8 ${role.textColor}`} />
                     </div>
-
-                    <CardTitle className="text-xl text-slate-900">
+                    <CardTitle className="text-2xl text-slate-900 mb-2">
                       {role.title}
                     </CardTitle>
-                    <CardDescription className="text-sm text-slate-600 mt-2">
+                    <CardDescription className="text-slate-500 text-base leading-relaxed">
                       {role.description}
                     </CardDescription>
                   </CardHeader>
-
-                  <CardContent>
-                    <Button
-                      className={`w-full bg-gradient-to-r ${role.color} hover:opacity-90 text-white`}
-                    >
-                      Continue
+                  <CardContent className="pb-8">
+                    <Button className={`w-full h-12 bg-gradient-to-r ${role.color} hover:opacity-90 text-white font-semibold rounded-xl`}>
+                      Get Started
+                      <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </Button>
                   </CardContent>
                 </Card>
               </Link>
-            )
+            );
           })}
         </div>
 
-        {/* Footer Info */}
-        <div className="mt-12 text-center">
-          <p className="text-sm text-slate-500">
-            You can change your profile type anytime from your account settings
+        <div className="mt-16 text-center border-t border-slate-200 pt-8">
+          <p className="text-slate-400 text-sm">
+            Need help? Check our <span className="text-slate-600 font-medium cursor-pointer hover:underline">Support Center</span>
           </p>
         </div>
       </div>
     </div>
-  )
+  );
 }

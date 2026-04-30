@@ -31,58 +31,14 @@ import {
 } from "@/components/ui/avatar";
 import { X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { tasks } from "@/config/data";
 
-const tasksData = [
-  {
-    id: 1,
-    title: "Build Login Page",
-    description:
-      "Create a responsive login page with email and password fields, validation, error handling, and integration with authentication API. Ensure proper UI feedback and loading states.",
-    status: "In Progress",
-    startDate: "2026-02-01",
-    dueDate: "2026-02-10",
-  },
-  {
-    id: 2,
-    title: "Resume Analyzer Integration",
-    description:
-      "Integrate resume parsing API to analyze uploaded CVs. Extract skills, experience, and education data, then display structured insights to users in a clean dashboard format.",
-    status: "Pending",
-    startDate: "2026-02-05",
-    dueDate: "2026-02-15",
-  },
-  {
-    id: 3,
-    title: "Final Project Report",
-    description:
-      "Prepare and submit the final project report including system design, implementation details, screenshots, and testing results. Follow proper formatting and documentation standards.",
-    status: "Completed",
-    startDate: "2026-01-10",
-    dueDate: "2026-01-25",
-  },
-  {
-    id: 4,
-    title: "Dashboard UI Design",
-    description:
-      "Design and implement the main dashboard interface with charts, stats cards, and recent activity. Focus on clean layout, responsiveness, and usability.",
-    status: "In Progress",
-    startDate: "2026-02-08",
-    dueDate: "2026-02-18",
-  },
-  {
-    id: 5,
-    title: "API Optimization",
-    description:
-      "Improve backend API performance by reducing response time, optimizing queries, and adding caching where necessary. Test endpoints under load.",
-    status: "Pending",
-    startDate: "2026-02-12",
-    dueDate: "2026-02-20",
-  },
-];
 
 export default function TasksPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateRange, setDateRange] = useState();
+
+  const tasksData = tasks;
 
   // ✅ Filter Logic
   const filteredTasks = tasksData.filter((task) => {

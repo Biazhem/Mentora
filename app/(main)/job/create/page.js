@@ -180,10 +180,10 @@ export default function JobCreatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+    <div className="min-h-screen p-6">
       <div className="max-w-3xl mx-auto">
         <Card className="rounded-2xl shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-t-2xl">
+          <CardHeader className="from-emerald-500 to-emerald-600 text-white rounded-t-2xl">
             <CardTitle className="text-2xl">Create a New Job</CardTitle>
             <CardDescription className="text-emerald-100">
               Post a job opportunity from your organization
@@ -315,7 +315,7 @@ export default function JobCreatePage() {
             </div>
           </CardContent>
 
-          <CardFooter className="bg-slate-50 border-t border-slate-200 rounded-b-2xl flex justify-between pt-6">
+          <CardFooter className=" border-t border-slate-200 rounded-b-2xl flex justify-between pt-6">
             <Button
               variant="outline"
               onClick={() => router.back()}

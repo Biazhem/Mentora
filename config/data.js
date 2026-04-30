@@ -1,3 +1,5 @@
+export const USER_ROLE = "student"; // "student" | "organization" | "mentors"
+
 export const data = {
   organizations: [
     {
@@ -7,16 +9,16 @@ export const data = {
       logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlhthkE1qWPdzA3HWzdIifMnqqtuwEY_47Bw&s",
       website: "https://acme.com",
       category: "Information Technology",
-      location: "Islamabad, G-11"
+      location: "Islamabad, G-11",
     },
     {
-      id: 2, 
+      id: 2,
       name: "TechNova",
       logo: "https://cdn.dribbble.com/userupload/26694182/file/original-dc8c625e7aadcaec7cc34cd02b6ea171.jpg?format=webp&resize=400x300&vertical=center",
       description: "AI and cloud solutions",
       website: "https://technova.com",
       category: "Artificial Intelligence",
-      location: "Islamabad, G-11"
+      location: "Islamabad, G-11",
     },
     {
       id: 3,
@@ -25,7 +27,7 @@ export const data = {
       description: "Developer community and tools",
       website: "https://devhub.com",
       category: "Software",
-      location: "Islamabad, G-11"
+      location: "Islamabad, G-11",
     },
     {
       id: 4,
@@ -34,10 +36,10 @@ export const data = {
       description: "Startup building SaaS products",
       website: "https://innosoft.com",
       category: "SaaS",
-      location: "Islamabad, G-11"
+      location: "Islamabad, G-11",
     },
   ],
-  
+
   jobs: [
     {
       org_index: 1,
@@ -114,7 +116,6 @@ export const data = {
       end_date: "2026-04-25 21:00:00",
     },
   ],
-
   mentors: [
     {
       pic: "https://xsgames.co/randomusers/avatar.php?g=male&u=1",
@@ -149,8 +150,6 @@ export const data = {
       ],
     },
   ],
-
-  tasks: [],
 };
 
 export const JobTypes = [
@@ -173,4 +172,62 @@ export const EventTypes = [
   "Seminar",
   "Meetup",
   "Networking",
+];
+
+export const participants = [
+  { id: 1, name: "You", isMuted: false, isSpeaking: true },
+  { id: 2, name: "Sarah", isMuted: false, isSpeaking: false },
+  { id: 3, name: "Mike", isMuted: true, isSpeaking: false },
+  { id: 4, name: "Emma", isMuted: false, isSpeaking: false },
+  { id: 5, name: "Alex", isMuted: false, isSpeaking: true },
+  { id: 6, name: "Lisa", isMuted: true, isSpeaking: false },
+];
+
+
+export const tasks = [
+  {
+    id: 1,
+    title: "Build Login Page",
+    description:
+      "Create a responsive login page with email and password fields, validation, error handling, and integration with authentication API. Ensure proper UI feedback and loading states.",
+    status: "In Progress",
+    startDate: "2026-02-01",
+    dueDate: "2026-02-10",
+  },
+  {
+    id: 2,
+    title: "Resume Analyzer Integration",
+    description:
+      "Integrate resume parsing API to analyze uploaded CVs. Extract skills, experience, and education data, then display structured insights to users in a clean dashboard format.",
+    status: "Pending",
+    startDate: "2026-02-05",
+    dueDate: "2026-02-15",
+  },
+  {
+    id: 3,
+    title: "Final Project Report",
+    description:
+      "Prepare and submit the final project report including system design, implementation details, screenshots, and testing results. Follow proper formatting and documentation standards.",
+    status: "Completed",
+    startDate: "2026-01-10",
+    dueDate: "2026-01-25",
+  },
+  {
+    id: 4,
+    title: "Dashboard UI Design",
+    description:
+      "Design and implement the main dashboard interface with charts, stats cards, and recent activity. Focus on clean layout, responsiveness, and usability.",
+    status: "In Progress",
+    startDate: "2026-02-08",
+    dueDate: "2026-02-18",
+  },
+  {
+    id: 5,
+    title: "API Optimization",
+    description:
+      "Improve backend API performance by reducing response time, optimizing queries, and adding caching where necessary. Test endpoints under load.",
+    status: "Pending",
+    startDate: "2026-02-12",
+    dueDate: "2026-02-20",
+  },
 ];

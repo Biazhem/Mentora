@@ -5,16 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Mic, MicOff, PhoneOff } from "lucide-react";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Camera } from "lucide-react";
+import { participants } from "@/config/data";
 
 export default function Meetings() {
-  const participants = [
-    { id: 1, name: "You", isMuted: false, isSpeaking: true },
-    { id: 2, name: "Sarah", isMuted: false, isSpeaking: false },
-    { id: 3, name: "Mike", isMuted: true, isSpeaking: false },
-    { id: 4, name: "Emma", isMuted: false, isSpeaking: false },
-    { id: 5, name: "Alex", isMuted: false, isSpeaking: true },
-    { id: 6, name: "Lisa", isMuted: true, isSpeaking: false },
-  ];
 
   return (
     <div className="flex flex-col h-full bg-gray-100">

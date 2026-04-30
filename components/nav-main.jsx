@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/collapsible";
 
 import Link from "next/link";
+import { LayoutDashboard } from "lucide-react";
 
 export function NavMain() {
   return (
@@ -39,7 +40,16 @@ export function NavMain() {
         <SidebarMenu className="space-y-1">
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <Link href="/jobs" className="flex items-center gap-2">
+              <Link href="/dashboard" className="flex items-center gap-2">
+                <LayoutDashboard className="h-4 w-4" />
+                <span>Dashboard</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <Link href="/job" className="flex items-center gap-2">
                 <Briefcase className="h-4 w-4" />
                 <span>Jobs</span>
               </Link>
@@ -57,7 +67,7 @@ export function NavMain() {
 
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <Link href="/organizations" className="flex items-center gap-2">
+              <Link href="/organization" className="flex items-center gap-2">
                 <Building2 className="h-4 w-4" />
                 <span>Organizations</span>
               </Link>
@@ -111,7 +121,7 @@ export function NavMain() {
                   </SidebarMenuSubItem>
                   <SidebarMenuSubItem>
                     <SidebarMenuSubButton asChild>
-                      <Link href="/discussion/Chats">
+                      <Link href="/discussion/chats">
                         <span>Chats</span>
                       </Link>
                     </SidebarMenuSubButton>
