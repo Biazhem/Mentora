@@ -733,7 +733,6 @@ export default function StudentOnboardingPage() {
                     </Button>
                   )}
                 </div>
-
                 <div className="flex gap-3">
                   <Button
                     type="button"
