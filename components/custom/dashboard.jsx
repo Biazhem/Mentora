@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sidebar";
 import { usePathname } from "next/navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { FabButton } from "./drawer";
 
 export default function CoreUI({ children }) {
   const pathname = usePathname() || "/";
@@ -72,6 +73,7 @@ export default function CoreUI({ children }) {
             </BreadcrumbList>
           </Breadcrumb>
         </header>
+        <FabButton/>
 
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</div>
       </SidebarInset>
