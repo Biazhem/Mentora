@@ -231,3 +231,18 @@ export const tasks = [
     dueDate: "2026-02-20",
   },
 ];
+
+export const messages = [
+  { type: "other", content: "Hey, good to see you online!", avatar: "HS", timestamp: "10:32 AM" },
+  { type: "self", content: "Hello! What's up?", avatar: "AB", timestamp: "10:33 AM" },
+  { type: "other", content: "Just checking in on the project status. Any updates?", avatar: "HS", timestamp: "10:34 AM" },
+  { type: "self", content: "Yeah, finished the API integration. Testing now.", avatar: "AB", timestamp: "10:35 AM" },
+  { type: "other", content: "Nice! Send over the repo link when ready.", avatar: "HS", timestamp: "10:36 AM" },
+  { type: "self", content: "Here: github.com/your/repo. Pull request incoming.", avatar: "AB", timestamp: "10:37 AM" },
+  { type: "other", content: "Looks good. One tweak: add error handling to the realtime subscription.", avatar: "HS", timestamp: "10:40 AM" },
+  { type: "self", content: "On it. Supabase channel setup was tricky but sorted.", avatar: "AB", timestamp: "10:41 AM" },
+  { type: "other", content: "Cool. Also, team meeting at 2 PM?", avatar: "HS", timestamp: "10:42 AM" },
+  { type: "self", content: "Yep, confirmed. Bringing mock data for the members table.", avatar: "AB", timestamp: "10:43 AM" },
+  { type: "other", content: "Perfect. See you then! 👍", avatar: "HS", timestamp: "10:44 AM" },
+  { type: "self", content: "See you! 👋", avatar: "AB", timestamp: "10:45 AM" }
+];
