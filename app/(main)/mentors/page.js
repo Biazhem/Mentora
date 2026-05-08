@@ -1,19 +1,11 @@
 "use client"
 
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card"
 
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
+import { Avatar} from "@heroui/react"
+import { Card } from "@heroui/react"
 import Link from "next/link"
 import { data } from "@/config/data"
+import { Chip } from "@heroui/react"
 
 export default function MentorsPage() {
   // Transform mock data to match component structure
@@ -38,32 +30,32 @@ export default function MentorsPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {mentors.map((mentor) => (
           <Card key={mentor.id} className="flex flex-col hover:shadow-sm transition cursor-pointer">
-            <CardHeader className="pb-4">
+            <Card.Header className="pb-4">
               <div className="flex items-center gap-4">
-                <Avatar className="h-14 w-14">
-                  <AvatarImage src={mentor.picture} alt={mentor.name} />
-                  <AvatarFallback>{mentor.name.charAt(0)}</AvatarFallback>
+                <Avatar size="lg" >
+                  <Avatar.Image src={mentor.picture} alt={mentor.name} />
+                  <Avatar.Fallback>{mentor.name.charAt(0)}</Avatar.Fallback>
                 </Avatar>
                 <div>
-                  <CardTitle className="text-lg">{mentor.name}</CardTitle>
-                  <CardDescription className="text-xs">{mentor.bio}</CardDescription>
+                  <Card.Title className="text-lg">{mentor.name}</Card.Title>
+                  <Card.Description className="text-xs">{mentor.bio}</Card.Description>
                 </div>
               </div>
-            </CardHeader>
+            </Card.Header>
 
-            <CardContent className="flex-1">
+            <Card.Content className="flex-1">
               {/* Expertise */}
               <div className="mb-4">
                 <p className="text-sm font-medium text-slate-900 mb-2">Expertise</p>
                 <div className="flex flex-wrap gap-2">
                   {mentor.expertise.map((skill, idx) => (
-                    <Badge key={idx} variant="secondary" className="text-xs">
+                    <Chip size="sm" key={idx} variant="secondary" >
                       {skill}
-                    </Badge>
+                    </Chip>
                   ))}
                 </div>
               </div>
-            </CardContent>
+            </Card.Content>
           </Card>
         ))}
       </div>

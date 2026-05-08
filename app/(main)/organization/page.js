@@ -2,24 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
+import { Chip, Input, Card } from "@heroui/react";
+import { Select, ListBox } from "@heroui/react";
 import { data } from "@/config/data";
+import { Button } from "@heroui/react";
+import { ButtonGroup } from "@heroui/react";
+import { Filter } from "lucide-react";
+import { Trash } from "lucide-react";
 
 export default function OrganizationsPage() {
   const [search, setSearch] = useState("");
@@ -57,53 +46,53 @@ export default function OrganizationsPage() {
           className="w-fit"
         />
         <div className="flex gap-2">
-          <Select onValueChange={setIndustry} defaultValue="all">
-            <SelectTrigger>
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="Information Technology">
-                Information Technology
-              </SelectItem>
-              <SelectItem value="Artificial Intelligence">
-                Artificial Intelligence
-              </SelectItem>
-              <SelectItem value="Software">Software</SelectItem>
-              <SelectItem value="SaaS">SaaS</SelectItem>
-            </SelectContent>
+          <ButtonGroup>
+          </ButtonGroup>
+            <Button variant="secondary"><Filter />Filter</Button>
+            <Button isIconOnly variant="danger-soft"><Trash /></Button>
+          <Select onValueChange={setIndustry} defaultValue="all" className="min-w-[140px]">
+            <Select.Trigger>
+              <Select.Value />
+              <Select.Indicator/>
+            </Select.Trigger>
+            <Select.Popover>
+              <ListBox>
+                <ListBox.Item value="all">All Categories</ListBox.Item>
+                <ListBox.Item value="Information Technology">
+                  Information Technology
+                </ListBox.Item>
+                <ListBox.Item value="Artificial Intelligence">
+                  Artificial Intelligence
+                </ListBox.Item>
+                <ListBox.Item value="Software">Software</ListBox.Item>
+                <ListBox.Item value="SaaS">SaaS</ListBox.Item>
+              </ListBox>
+            </Select.Popover>
           </Select>
         </div>
       </div>
 
-      <div className="mx-auto px-4 grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredOrganizations.map((org,idx) => (
-          <Link key={org.name} href={`/organizations/${idx+1}`}>
-            <Card  className={"hover:shadow-sm cursor-pointer"}>
-              <CardHeader className="w-full flex gap-2">
-                <div className="w-12 h-12 rounded-md overflow-hidden bg-gray-100 shrink">
-                  <img
-                    src={org.pic}
-                    alt={org.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <Link href={`/organizations/${idx+1}`}>
-                  <CardTitle className="hover:underline cursor-pointer">
-                    {org.name}
-                  </CardTitle>
-                  <CardDescription className={"line-clamp-2"}>
-                    {org.category}
-                  </CardDescription>
-                </Link>
-              </CardHeader>
-
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  {org.description}
-                </p>
-                <p className="text-sm mt-2">Location: {org.location}</p>
-              </CardContent>
+      <div className="mx-auto px-4 grid md:grid-cols-2 gap-6">
+        {filteredOrganizations.map((org, idx) => (
+          <Link key={org.name} href={`/organizations/${idx + 1}`}>
+            <Card className="w-full items-stretch md:flex-row cursor-pointer">
+              <div className="relative h-[140px] w-full shrink-0 overflow-hidden rounded-2xl sm:h-[120px] sm:w-[120px]">
+                <img
+                  alt="alts"
+                  className="pointer-events-none absolute inset-0 h-full w-full scale-125 object-cover select-none"
+                  src={org.pic}
+                />
+              </div>
+              <div className="flex flex-1 flex-col gap-3">
+                <Card.Header className="gap-1">
+                  <Card.Title className="pr-8">{org.name}</Card.Title>
+                  <Card.Description>{org.description}</Card.Description>
+                </Card.Header>
+                <Card.Footer className="mt-auto flex gap-1">
+                  <Chip>{org.location}</Chip>
+                  <Chip> {org.category}</Chip>
+                </Card.Footer>
+              </div>
             </Card>
           </Link>
         ))}

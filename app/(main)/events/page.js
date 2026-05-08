@@ -1,24 +1,19 @@
 "use client";
 
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-
-import { Button } from "@/components/ui/button";
+import { Button, Card, CloseButton } from "@heroui/react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { data } from "@/config/data";
+import { Chip } from "@heroui/react";
+import { Separator } from "@heroui/react";
+import { ArrowUpRight } from "lucide-react";
 
 export default function EventsPage() {
   // Transform mock data to match component structure
-  const organization = data.organizations.map((org)=>(
-    { image: org.logo, title: org.name }
-  ));
+  const organization = data.organizations.map((org) => ({
+    image: org.logo,
+    title: org.name,
+  }));
 
   const events = data.events.map((event, idx) => ({
     id: idx + 1,
@@ -46,7 +41,7 @@ export default function EventsPage() {
           </p>
         </div>
         <Link href="/events/create">
-          <Button size="lg">
+          <Button size="sm">
             <Plus className="mr-2" />
             Create Event
           </Button>
@@ -55,39 +50,33 @@ export default function EventsPage() {
 
       <div className="grid gap-6 md:grid-cols-2">
         {events.map((event) => (
-          <Card
-            key={event.id}
-            className="flex flex-col cursor-pointer hover:shadow-sm"
-          >
-            <CardHeader className="w-full flex gap-2">
-              <div className="w-12 h-12 rounded-md overflow-hidden bg-gray-100 shrink">
-                <img
-                  src={organization[event.org_id]?.image}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div>
-                <CardTitle className="text-lg">{event.title}</CardTitle>
-                <CardDescription>
-                  {event.date}, {event.location}, by <span className="font-bold text-foreground">{ organization[event.org_id]?.title}</span>
-                </CardDescription>
-              </div>
-            </CardHeader>
-
-            <CardContent className="flex-1">
-              <p className="text-sm text-muted-foreground mb-4">
-                {event.description}
-              </p>
-
-              <div className="flex gap-2">
-                <span className="inline-block text-xs font-medium px-3 py-1 rounded-full bg-secondary">
-                  {event.status}
-                </span>
-                <span className="inline-block text-xs font-medium px-3 py-1 rounded-full bg-blue-100 text-blue-800">
-                  {event.type}
-                </span>
-              </div>
-            </CardContent>
+          <Card className="w-full items-stretch md:flex-row cursor-pointer">
+            <div className="relative h-[140px] w-full shrink-0 overflow-hidden rounded-2xl sm:h-[120px] sm:w-[120px]">
+              <img
+                alt="alts"
+                className="pointer-events-none absolute inset-0 h-full w-full scale-125 object-cover select-none"
+                src={organization[event.org_id].image}
+              />
+            </div>
+            <div className="flex flex-1 flex-col gap-3">
+              <Card.Header className="gap-1">
+                <Card.Title className="pr-8">{event.title}</Card.Title>
+                <Card.Description>{event.description}</Card.Description>
+                <Button 
+                  size="sm"  
+                  variant="secondary"
+                  className="absolute top-2 right-2"
+                >{organization[event.org_id].title}<ArrowUpRight/></Button>
+              </Card.Header>
+              <Card.Footer className="mt-auto flex gap-1">
+                  <Chip>{event.type}</Chip>
+                  <Chip>{event.location}</Chip>
+                  -
+                  <Chip> {event.startDate.split(" ")[0].replaceAll("-","/")} </Chip>
+                  <Chip> {event.endDate.split(" ")[0].replaceAll("-","/")} </Chip>
+                  
+              </Card.Footer>
+            </div>
           </Card>
         ))}
       </div>

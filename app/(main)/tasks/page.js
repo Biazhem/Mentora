@@ -2,54 +2,41 @@
 
 import { useState } from "react";
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
-import {
   AvatarFallback,
   AvatarGroup,
   AvatarImage,
   Avatar,
 } from "@/components/ui/avatar";
+import { Label, ListBox, Select } from "@heroui/react";
 import { X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { tasks } from "@/config/data";
 
+import { Card, Chip, Button } from "@heroui/react";
+
+import { DateRangePicker, DateField, RangeCalendar } from "@heroui/react";
 
 export default function TasksPage() {
   const [statusFilter, setStatusFilter] = useState("all");
-  const [dateRange, setDateRange] = useState();
+
+  // HeroUI format
+  const [dateRange, setDateRange] = useState({
+    start: null,
+    end: null,
+  });
 
   const tasksData = tasks;
 
-  // ✅ Filter Logic
+  // Filter logic
   const filteredTasks = tasksData.filter((task) => {
     const taskStart = new Date(task.startDate);
 
     const statusMatch = statusFilter === "all" || task.status === statusFilter;
 
     const rangeMatch =
-      !dateRange?.from ||
-      (taskStart >= dateRange.from &&
-        taskStart <= (dateRange.to || dateRange.from));
+      !dateRange?.start ||
+      !dateRange?.end ||
+      (taskStart >= dateRange.start && taskStart <= dateRange.end);
 
     return statusMatch && rangeMatch;
   });
@@ -61,52 +48,102 @@ export default function TasksPage() {
       {/* Filters */}
       <div className="flex justify-between mb-8 gap-4 flex-wrap">
         {/* Status Filter */}
-        <Select onValueChange={setStatusFilter} defaultValue="all">
-          <SelectTrigger>
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="Pending">Pending</SelectItem>
-            <SelectItem value="In Progress">In Progress</SelectItem>
-            <SelectItem value="Completed">Completed</SelectItem>
-          </SelectContent>
+        <Select
+          className="w-[256px]"
+          placeholder="Select status"
+          selectedKeys={statusFilter ? [statusFilter] : []}
+          onSelectionChange={(keys) => {
+            const value = Array.from(keys)[0];
+            setStatusFilter(value || "all");
+          }}
+        >
+          <Label>Status</Label>
+
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+
+          <Select.Popover>
+            <ListBox>
+              <ListBox.Item id="all" textValue="All Status">
+                All Status
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+
+              <ListBox.Item id="Pending" textValue="Pending">
+                Pending
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+
+              <ListBox.Item id="In Progress" textValue="In Progress">
+                In Progress
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+
+              <ListBox.Item id="Completed" textValue="Completed">
+                Completed
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+            </ListBox>
+          </Select.Popover>
         </Select>
 
-        {/* Date Range Filter */}
+        {/* Date Range Filter (HeroUI) */}
         <div className="flex gap-2 items-center">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline">
-                {dateRange?.from ? (
-                  dateRange.to ? (
-                    <>
-                      {dateRange.from.toDateString()} -{" "}
-                      {dateRange.to.toDateString()}
-                    </>
-                  ) : (
-                    dateRange.from.toDateString()
-                  )
-                ) : (
-                  "Select Date Range"
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="range"
-                numberOfMonths={2}
-                selected={dateRange}
-                onSelect={setDateRange}
-              />
-            </PopoverContent>
-          </Popover>
+          <DateRangePicker value={dateRange} onChange={setDateRange}>
+            <DateField.Group>
+              <DateField.InputContainer>
+                <DateField.Input slot="start">
+                  {(segment) => <DateField.Segment segment={segment} />}
+                </DateField.Input>
+
+                <DateRangePicker.RangeSeparator />
+
+                <DateField.Input slot="end">
+                  {(segment) => <DateField.Segment segment={segment} />}
+                </DateField.Input>
+              </DateField.InputContainer>
+
+              <DateField.Suffix>
+                <DateRangePicker.Trigger>
+                  <DateRangePicker.TriggerIndicator />
+                </DateRangePicker.Trigger>
+              </DateField.Suffix>
+            </DateField.Group>
+
+            <DateRangePicker.Popover>
+              <RangeCalendar aria-label="Filter tasks by date range">
+                <RangeCalendar.Header>
+                  <RangeCalendar.YearPickerTrigger>
+                    <RangeCalendar.YearPickerTriggerHeading />
+                    <RangeCalendar.YearPickerTriggerIndicator />
+                  </RangeCalendar.YearPickerTrigger>
+
+                  <RangeCalendar.NavButton slot="previous" />
+                  <RangeCalendar.NavButton slot="next" />
+                </RangeCalendar.Header>
+
+                <RangeCalendar.Grid>
+                  <RangeCalendar.GridHeader>
+                    {(day) => (
+                      <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>
+                    )}
+                  </RangeCalendar.GridHeader>
+
+                  <RangeCalendar.GridBody>
+                    {(date) => <RangeCalendar.Cell date={date} />}
+                  </RangeCalendar.GridBody>
+                </RangeCalendar.Grid>
+              </RangeCalendar>
+            </DateRangePicker.Popover>
+          </DateRangePicker>
 
           {/* Clear Button */}
-          {dateRange && (
+          {dateRange?.start && (
             <Button
-              variant="destructive"
-              onClick={() => setDateRange(undefined)}
+              variant="danger-soft"
+              onClick={() => setDateRange({ start: null, end: null })}
             >
               <X />
               Clear
@@ -119,33 +156,34 @@ export default function TasksPage() {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredTasks.map((task) => (
           <Card key={task.id}>
-            <CardHeader>
-              <CardTitle>{task.title}</CardTitle>
-            </CardHeader>
+            <Card.Header>
+              <Card.Title>{task.title}</Card.Title>
+            </Card.Header>
 
-            <CardContent className="space-y-3">
-              <div className="text-sm line-clamp-1">{ task.description }</div>
+            <Card.Content className="space-y-3">
+              <div className="text-sm line-clamp-1">{task.description}</div>
 
-              <div className="w-full flex gap-2">
-                <Badge
-                  variant={
+              <div className="w-full flex gap-2 items-center">
+                <Chip
+                  color={
                     task.status === "Completed"
-                      ? "default"
+                      ? "success"
                       : task.status === "In Progress"
-                        ? "secondary"
-                        : "destructive"
+                        ? "default"
+                        : "danger"
                   }
+                  size="sm"
                 >
                   {task.status}
-                </Badge>
+                </Chip>
                 <Separator orientation="vertical" />
-                <Badge>{task.startDate}</Badge> - <Badge>{task.dueDate}</Badge>
+                <Chip>{task.startDate}</Chip> - <Chip>{task.dueDate}</Chip>
               </div>
-            </CardContent>
-            <CardFooter
-              className={"flex flex-col items-start justify-start gap-2"}
-            >
+            </Card.Content>
+
+            <Card.Footer className="flex flex-col items-start gap-2">
               <span>Assignees</span>
+
               <AvatarGroup>
                 <Avatar size="sm">
                   <AvatarImage
@@ -154,6 +192,7 @@ export default function TasksPage() {
                   />
                   <AvatarFallback>CN</AvatarFallback>
                 </Avatar>
+
                 <Avatar size="sm">
                   <AvatarImage
                     src="https://github.com/maxleiter.png"
@@ -161,6 +200,7 @@ export default function TasksPage() {
                   />
                   <AvatarFallback>LR</AvatarFallback>
                 </Avatar>
+
                 <Avatar size="sm">
                   <AvatarImage
                     src="https://github.com/evilrabbit.png"
@@ -169,7 +209,7 @@ export default function TasksPage() {
                   <AvatarFallback>ER</AvatarFallback>
                 </Avatar>
               </AvatarGroup>
-            </CardFooter>
+            </Card.Footer>
           </Card>
         ))}
       </div>

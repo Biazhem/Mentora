@@ -1,19 +1,13 @@
 "use client";
 
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@heroui/react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { data } from "@/config/data";
 import { UsersIcon } from "lucide-react";
+import { Card } from "@heroui/react"
+import { Chip } from "@heroui/react";
 
 export default function Meeting() {
   // Transform mock data to match component structure
@@ -49,13 +43,13 @@ export default function Meeting() {
         </div>
         <div className="flex gap-2">
           <Link href="/discussion/meetings/create">
-            <Button size="lg">
+            <Button>
               <Plus className="mr-2" />
               Create Meeting
             </Button>
           </Link>
           <Link href="/discussion/meetings/join?jid=u29012090312">
-            <Button size="lg">
+            <Button>
               <UsersIcon className="mr-2" />
               Join Meeting
             </Button>
@@ -69,33 +63,29 @@ export default function Meeting() {
             key={event.id}
             className="flex flex-col cursor-pointer hover:shadow-sm"
           >
-            <CardHeader className="w-full flex gap-2">
+            <Card.Header className="w-full flex gap-2">
             
               <div>
-                <CardTitle className="text-lg">{event.title}</CardTitle>
-                <CardDescription>
+                <Card.Title className="text-lg">{event.title}</Card.Title>
+                <Card.Description>
                   {event.date}, {event.location}, by{" "}
                   <span className="font-bold text-foreground">
                     {organization[event.org_id]?.title}
                   </span>
-                </CardDescription>
+                </Card.Description>
               </div>
-            </CardHeader>
+            </Card.Header>
 
-            <CardContent className="flex-1">
+            <Card.Content className="flex-1">
               <p className="text-sm text-muted-foreground mb-4">
                 {event.description}
               </p>
 
               <div className="flex gap-2">
-                <span className="inline-block text-xs font-medium px-3 py-1 rounded-full bg-secondary">
-                  {event.status}
-                </span>
-                <span className="inline-block text-xs font-medium px-3 py-1 rounded-full bg-blue-100 text-blue-800">
-                  {event.type}
-                </span>
+                <Chip>{event.type}</Chip>
+                <Chip color="accent" variant="primary">{event.status}</Chip>
               </div>
-            </CardContent>
+            </Card.Content>
           </Card>
         ))}
       </div>
