@@ -1,4 +1,4 @@
-export const USER_ROLE = "student"; // "student" | "organization" | "mentors"
+export const USER_ROLE = "mentors"; // "student" | "organization" | "mentors"
 
 export const data = {
   organizations: [

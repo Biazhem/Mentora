@@ -1,4 +1,3 @@
-// app/mentor-onboarding/page.jsx
 "use client";
 
 import { useState } from "react";
@@ -6,12 +5,8 @@ import {
   User,
   Mail,
   Phone,
-  School,
   GraduationCap,
-  Calendar,
   MapPin,
-  FileText,
-  Upload,
   X,
   Globe,
   Code,
@@ -23,19 +18,16 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+  Button,
+  Card,
+  Chip,
+  Input,
+  Label,
+  Surface,
+  TextArea,
+  TextField,
+} from "@heroui/react";
 import Link from "next/link";
 
 export default function MentorOnboardingPage() {
@@ -63,45 +55,8 @@ export default function MentorOnboardingPage() {
   const [slug, setSlug] = useState("");
   const [emailError, setEmailError] = useState("");
   const [skillError, setSkillError] = useState("");
-
-  // Stepper state
   const [step, setStep] = useState(0);
   const steps = ["Name", "Contact", "Academics"];
-  const nextStep = () => {
-    if (step === 0) {
-      if (!formData.firstName || !formData.lastName) {
-        alert("Please enter your first and last name.");
-        return;
-      }
-    }
-    if (step === 1) {
-      if (!formData.email || !formData.phone) {
-        alert("Please provide your institutional email and phone number.");
-        return;
-      }
-      if (!validateInstitutionEmail(formData.email)) {
-        alert(
-          "Please use an institutional email (not gmail/outlook/protonmail/etc).",
-        );
-        return;
-      }
-    }
-    setStep((s) => Math.min(s + 1, steps.length - 1));
-  };
-
-  const prevStep = () => setStep((s) => Math.max(s - 1, 0));
-
-  const programs = [
-    "Computer Science",
-    "Engineering",
-    "Business Administration",
-    "Mathematics",
-    "Physics",
-    "Biology",
-    "Psychology",
-    "Economics",
-    "Other",
-  ];
 
   const degrees = [
     "Bachelor of Science (B.Sc)",
@@ -116,31 +71,17 @@ export default function MentorOnboardingPage() {
   ];
 
   const validateInstitutionEmail = (email) => {
-    const prohibitedDomains = [
-      "gmail.com",
-      "yahoo.com",
-      "hotmail.com",
-      "outlook.com",
-      "aol.com",
-      "protonmail.com",
-    ];
+    const prohibitedDomains = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "aol.com", "protonmail.com"];
     const emailDomain = email.split("@")[1];
 
     if (!emailDomain) return false;
 
     if (prohibitedDomains.includes(emailDomain.toLowerCase())) {
-      setEmailError(
-        "Please use your institutional email (.edu, .ac, or company email)",
-      );
+      setEmailError("Please use your institutional email (.edu, .ac, or company email)");
       return false;
     }
 
-    // Check if it's an institutional email (.edu, .ac, or custom domain)
-    if (
-      emailDomain.includes(".edu") ||
-      emailDomain.includes(".ac") ||
-      emailDomain.length > 4
-    ) {
+    if (emailDomain.includes(".edu") || emailDomain.includes(".ac") || emailDomain.length > 4) {
       setEmailError("");
       return true;
     }
@@ -150,50 +91,39 @@ export default function MentorOnboardingPage() {
   };
 
   const generateSlug = (firstName, lastName) => {
-    const randomId =
-      Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+    const randomId = Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
     const slugValue = `mentor-${firstName.toLowerCase()}-${lastName.toLowerCase()}-${randomId}`;
     setSlug(slugValue);
     return slugValue;
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const updateField = (name, value) => {
     setFormData((prev) => {
       const newData = { ...prev, [name]: value };
 
-      if (name === "email") {
-        validateInstitutionEmail(value);
-      }
-
-      if (name === "firstName" || name === "lastName") {
-        if (newData.firstName && newData.lastName) {
-          generateSlug(newData.firstName, newData.lastName);
-        }
+      if (name === "email") validateInstitutionEmail(value);
+      if ((name === "firstName" || name === "lastName") && newData.firstName && newData.lastName) {
+        generateSlug(newData.firstName, newData.lastName);
       }
 
       return newData;
     });
   };
 
-  const handleSelectChange = (name, value) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-
-    if (name === "program" && value !== "Other") {
-      setFormData((prev) => ({ ...prev, programCustom: "" }));
+  const handleChange = (eOrValue, nameArg) => {
+    if (eOrValue && eOrValue.target) {
+      const { name, value } = eOrValue.target;
+      updateField(name, value);
+      return;
     }
+    if (nameArg) updateField(nameArg, eOrValue ?? "");
   };
 
-  // Skills Management
   const handleAddSkill = () => {
     const skill = formData.currentSkill.trim();
     if (skill && !formData.skills.includes(skill)) {
       if (formData.skills.length < 20) {
-        setFormData((prev) => ({
-          ...prev,
-          skills: [...prev.skills, skill],
-          currentSkill: "",
-        }));
+        setFormData((prev) => ({ ...prev, skills: [...prev.skills, skill], currentSkill: "" }));
         setSkillError("");
       } else {
         setSkillError("Maximum 20 skills allowed");
@@ -205,39 +135,13 @@ export default function MentorOnboardingPage() {
     }
   };
 
-  // Languages
   const handleAddLanguage = () => {
     const lang = formData.currentLanguage.trim();
     if (lang && !formData.languages.includes(lang)) {
-      setFormData((prev) => ({
-        ...prev,
-        languages: [...prev.languages, lang],
-        currentLanguage: "",
-      }));
+      setFormData((prev) => ({ ...prev, languages: [...prev.languages, lang], currentLanguage: "" }));
     }
   };
 
-  const removeLanguage = (lang) =>
-    setFormData((prev) => ({
-      ...prev,
-      languages: prev.languages.filter((l) => l !== lang),
-    }));
-
-  const handleRemoveSkill = (skillToRemove) => {
-    setFormData((prev) => ({
-      ...prev,
-      skills: prev.skills.filter((skill) => skill !== skillToRemove),
-    }));
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAddSkill();
-    }
-  };
-
-  // Experience Management
   const handleAddExperience = () => {
     if (formData.currentJob && formData.currentCompany) {
       const newExperience = {
@@ -253,91 +157,33 @@ export default function MentorOnboardingPage() {
         currentCompany: "",
         yearsOfExperience: "",
       }));
-    } else {
-      alert("Please fill in both job title and company");
+      return;
     }
+    alert("Please fill in both job title and company");
   };
 
-  const handleRemoveExperience = (id) => {
-    setFormData((prev) => ({
-      ...prev,
-      experiences: prev.experiences.filter((exp) => exp.id !== id),
-    }));
-  };
-
-  const validateAge = (dateOfBirth) => {
-    const birthDate = new Date(dateOfBirth);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-
-    if (
-      monthDiff < 0 ||
-      (monthDiff === 0 && today.getDate() < birthDate.getDate())
-    ) {
-      age--;
+  const nextStep = () => {
+    if (step === 0 && (!formData.firstName || !formData.lastName)) return alert("Please enter your first and last name.");
+    if (step === 1) {
+      if (!formData.email || !formData.phone) return alert("Please provide your institutional email and phone number.");
+      if (!validateInstitutionEmail(formData.email)) return alert("Please use an institutional email.");
     }
-
-    return age;
+    setStep((s) => Math.min(s + 1, steps.length - 1));
   };
+
+  const prevStep = () => setStep((s) => Math.max(s - 1, 0));
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (step < 2) return nextStep();
 
-    // If not on final step, advance to next step
-    if (typeof step !== "undefined" && step < 2) {
-      nextStep();
-      return;
+    if (!validateInstitutionEmail(formData.email)) return alert("Please use a valid institutional email address");
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.degree) {
+      return alert("Please fill in all required fields");
     }
+    if (formData.skills.length === 0) return alert("Please add at least one skill");
 
-    // Final step: proceed with validations and submission
-    // Validate email
-    if (!validateInstitutionEmail(formData.email)) {
-      alert("Please use a valid institutional email address");
-      return;
-    }
-
-    // Validate required fields
-    if (
-      !formData.firstName ||
-      !formData.lastName ||
-      !formData.email ||
-      !formData.phone ||
-      !formData.degree
-    ) {
-      alert("Please fill in all required fields");
-      return;
-    }
-
-    // Validate skills
-    if (formData.skills.length === 0) {
-      alert("Please add at least one skill");
-      return;
-    }
-
-    // Get final program value
-    const finalProgram =
-      formData.program === "Other" ? formData.programCustom : formData.program;
-
-    // Prepare data for submission
-    const submissionData = {
-      ...formData,
-      program: finalProgram,
-      slug: slug,
-      fullName: `${formData.firstName} ${formData.lastName}`,
-
-      submittedAt: new Date().toISOString(),
-      role: "mentor",
-    };
-
-    console.log("Mentor Onboarding Data:", submissionData);
-    console.log("Generated Slug:", slug);
-    console.log("Skills:", formData.skills);
-    console.log("Experiences:", formData.experiences);
-
-    alert(
-      `Mentor profile created successfully!\nSlug: ${slug}\nSkills: ${formData.skills.length}\nExperience: ${formData.experiences.length}`,
-    );
+    alert(`Mentor profile created successfully!\nSlug: ${slug}\nSkills: ${formData.skills.length}\nExperience: ${formData.experiences.length}`);
   };
 
   const handleReset = () => {
@@ -349,494 +195,205 @@ export default function MentorOnboardingPage() {
       program: "",
       programCustom: "",
       degree: "",
-      dateOfBirth: "",
       address: "",
       bio: "",
-      cv: null,
       website: "",
       skills: [],
       currentSkill: "",
+      languages: [],
+      currentLanguage: "",
       experiences: [],
       currentJob: "",
       currentCompany: "",
       yearsOfExperience: "",
     });
-    setCvFileName("");
     setSlug("");
     setEmailError("");
     setSkillError("");
+    setStep(0);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center p-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full w-16 h-16 mb-4">
-            <Award className="w-8 h-8 text-white" />
+    <div className="min-h-screen p-4 md:p-8">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+        <Surface variant="secondary" className="rounded-3xl p-6">
+          <div className="flex items-center gap-4">
+            <div className="rounded-2xl bg-accent p-3 text-accent-foreground">
+              <Award className="h-7 w-7" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold">Mentor Onboarding</h1>
+              <p className="text-sm text-muted">Share your expertise and guide the next generation.</p>
+            </div>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-900 to-pink-700 bg-clip-text text-transparent">
-            Mentor Onboarding
-          </h1>
-          <p className="text-slate-600 mt-2">
-            Share your expertise and guide the next generation
-          </p>
+        </Surface>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          {steps.map((s, idx) => (
+            <Card key={s} variant={idx === step ? "tertiary" : "default"}>
+              <Card.Content className="flex items-center gap-3">
+                <Chip color={idx <= step ? "accent" : "default"} size="sm" variant="soft">Step {idx + 1}</Chip>
+                <p className="text-sm font-medium">{s}</p>
+              </Card.Content>
+            </Card>
+          ))}
         </div>
 
-
-        {/* Form Card */}
-        <Card className="shadow-xl border-0">
-          <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {step === 0 && (
-                  <>
-                    {/* Step 1: Name */}
-                    <div className="space-y-2 md:col-span-2">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="firstName"
-                            className="text-sm font-medium"
-                          >
-                            First Name <span className="text-red-500">*</span>
-                          </Label>
-                          <div className="relative">
-                            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <Input
-                              id="firstName"
-                              name="firstName"
-                              value={formData.firstName}
-                              onChange={handleChange}
-                              required
-                              className="pl-10"
-                              placeholder="Enter first name"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="lastName"
-                            className="text-sm font-medium"
-                          >
-                            Last Name <span className="text-red-500">*</span>
-                          </Label>
-                          <div className="relative">
-                            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <Input
-                              id="lastName"
-                              name="lastName"
-                              value={formData.lastName}
-                              onChange={handleChange}
-                              required
-                              className="pl-10"
-                              placeholder="Enter last name"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {step === 1 && (
-                  <>
-                    {/* Step 2: Contact */}
-                    <div className="space-y-2 md:col-span-2">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="email"
-                            className="text-sm font-medium"
-                          >
-                            Institutional Email{" "}
-                            <span className="text-red-500">*</span>
-                          </Label>
-                          <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <Input
-                              id="email"
-                              name="email"
-                              type="email"
-                              value={formData.email}
-                              onChange={handleChange}
-                              required
-                              className={`pl-10 ${emailError ? "border-red-500 focus:ring-red-500" : ""}`}
-                              placeholder="mentor@institution.edu"
-                            />
-                          </div>
-                          {emailError && (
-                            <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
-                              <AlertCircle className="w-3 h-3" />
-                              {emailError}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="phone"
-                            className="text-sm font-medium"
-                          >
-                            Phone Number <span className="text-red-500">*</span>
-                          </Label>
-                          <div className="relative">
-                            <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <Input
-                              id="phone"
-                              name="phone"
-                              type="tel"
-                              value={formData.phone}
-                              onChange={handleChange}
-                              required
-                              className="pl-10"
-                              placeholder="+1 234 567 8900"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {step === 2 && (
-                  <div className="space-y-2">
-                    <Label htmlFor="website" className="text-sm font-medium">
-                      Personal/Professional Website
-                    </Label>
-                    <div className="relative">
-                      <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input
-                        id="website"
-                        name="website"
-                        type="url"
-                        value={formData.website}
-                        onChange={handleChange}
-                        className="pl-10"
-                        placeholder="https://yourwebsite.com"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {step === 2 && (
-                  <div className="space-y-2">
-                    <Label htmlFor="degree" className="text-sm font-medium">
-                      Highest Degree <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="relative">
-                      <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
-                      <Select
-                        value={formData.degree}
-                        onValueChange={(value) =>
-                          handleSelectChange("degree", value)
-                        }
-                        required
-                      >
-                        <SelectTrigger className="pl-10">
-                          <SelectValue placeholder="Select Degree" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {degrees.map((degree) => (
-                            <SelectItem key={degree} value={degree}>
-                              {degree}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
-
-                {step === 2 && (
-                  <>
-                    {/* Step 3: Skills & Languages */}
-                    <div className="md:col-span-2 space-y-2">
-                      <Label className="text-sm font-medium">
-                        Skills & Expertise{" "}
-                        <span className="text-red-500">*</span>
-                      </Label>
-                      <div className="flex gap-2">
-                        <div className="flex-1 relative">
-                          <Code className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <Input
-                            value={formData.currentSkill}
-                            onChange={(e) =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                currentSkill: e.target.value,
-                              }))
-                            }
-                            onKeyPress={handleKeyPress}
-                            className="pl-10"
-                            placeholder="e.g., React, Python, Leadership, Communication"
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          onClick={handleAddSkill}
-                          variant="outline"
-                        >
-                          <Plus className="w-4 h-4 mr-1" />
-                          Add
-                        </Button>
-                      </div>
-                      {skillError && (
-                        <p className="text-xs text-red-500">{skillError}</p>
-                      )}
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {formData.skills.map((skill, index) => (
-                          <Badge
-                            key={index}
-                            variant="secondary"
-                            className="px-3 py-1 text-sm"
-                          >
-                            {skill}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveSkill(skill)}
-                              className="ml-2 hover:text-red-600"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </Badge>
-                        ))}
-                      </div>
-                      <p className="text-xs text-slate-500">
-                        Add your technical and soft skills
-                      </p>
-                    </div>
-
-                    {/* Languages */}
-                    <div className="md:col-span-2 space-y-2">
-                      <Label className="text-sm font-medium">Languages</Label>
-                      <div className="flex gap-2">
-                        <div className="flex-1 relative">
-                          <Input
-                            value={formData.currentLanguage}
-                            onChange={(e) =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                currentLanguage: e.target.value,
-                              }))
-                            }
-                            onKeyDown={(e) =>
-                              e.key === "Enter" &&
-                              (e.preventDefault(), handleAddLanguage())
-                            }
-                            className="pl-3"
-                            placeholder="e.g., English, French"
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          onClick={handleAddLanguage}
-                          variant="outline"
-                        >
-                          Add
-                        </Button>
-                      </div>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {formData.languages.map((lang) => (
-                          <Badge
-                            key={lang}
-                            variant="secondary"
-                            className="px-3 py-1 text-sm"
-                          >
-                            {lang}
-                            <button
-                              type="button"
-                              onClick={() => removeLanguage(lang)}
-                              className="ml-2 hover:text-red-600"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {step === 2 && (
-                  <>
-                    {/* Current Job Section */}
-                    <div className="md:col-span-2 space-y-2">
-                      <Label className="text-sm font-medium">
-                        Current Position <span className="text-red-500">*</span>
-                      </Label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="relative">
-                          <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <Input
-                            value={formData.currentJob}
-                            onChange={(e) =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                currentJob: e.target.value,
-                              }))
-                            }
-                            className="pl-10"
-                            placeholder="Job Title"
-                          />
-                        </div>
-                        <div className="relative">
-                          <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <Input
-                            value={formData.currentCompany}
-                            onChange={(e) =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                currentCompany: e.target.value,
-                              }))
-                            }
-                            className="pl-10"
-                            placeholder="Company/Organization"
-                          />
-                        </div>
-                        <div className="relative md:col-span-2">
-                          <Input
-                            value={formData.yearsOfExperience}
-                            onChange={(e) =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                yearsOfExperience: e.target.value,
-                              }))
-                            }
-                            placeholder="Years of experience (e.g., 3 years, Present)"
-                          />
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        onClick={handleAddExperience}
-                        variant="outline"
-                        className="mt-2"
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Add Experience
-                      </Button>
-                    </div>
-
-                    {/* Experiences List */}
-                    {formData.experiences.length > 0 && (
-                      <div className="md:col-span-2 space-y-2">
-                        <Label className="text-sm font-medium">
-                          Work Experience
-                        </Label>
-                        <div className="space-y-2">
-                          {formData.experiences.map((exp) => (
-                            <div
-                              key={exp.id}
-                              className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
-                            >
-                              <div>
-                                <p className="font-medium text-sm">
-                                  {exp.title}
-                                </p>
-                                <p className="text-xs text-slate-600">
-                                  {exp.company} • {exp.years}
-                                </p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveExperience(exp.id)}
-                                className="text-red-500 hover:text-red-700"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Address */}
-                    <div className="md:col-span-2 space-y-2">
-                      <Label htmlFor="address" className="text-sm font-medium">
-                        Address
-                      </Label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <Input
-                          id="address"
-                          name="address"
-                          value={formData.address}
-                          onChange={handleChange}
-                          className="pl-10"
-                          placeholder="Enter your address"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Bio */}
-                    <div className="md:col-span-2 space-y-2">
-                      <Label htmlFor="bio" className="text-sm font-medium">
-                        Professional Bio <span className="text-red-500">*</span>
-                      </Label>
-                      <Textarea
-                        id="bio"
-                        name="bio"
-                        value={formData.bio}
-                        onChange={handleChange}
-                        required
-                        rows={4}
-                        placeholder="Tell us about your professional background, teaching philosophy, and what you can offer as a mentor..."
-                        className="resize-none"
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* NAV CONTROLS */}
-              <div className="flex items-center gap-3 pt-4 border-t">
-                <div className="flex-1">
-                  {step > 0 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={prevStep}
-                      className="h-12"
-                    >
-                      Back
-                    </Button>
-                  )}
+        <Card>
+          <Card.Content>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {step === 0 && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <TextField name="firstName" value={formData.firstName} onChange={(value) => handleChange(value, "firstName")}>
+                    <Label>First Name *</Label>
+                    <Input placeholder="Enter first name" />
+                  </TextField>
+                  <TextField name="lastName" value={formData.lastName} onChange={(value) => handleChange(value, "lastName")}>
+                    <Label>Last Name *</Label>
+                    <Input placeholder="Enter last name" />
+                  </TextField>
                 </div>
+              )}
 
-                <div className="flex gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleReset}
-                    className="h-12"
-                  >
-                    Reset
-                  </Button>
+              {step === 1 && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <TextField name="email" type="email" value={formData.email} onChange={(value) => handleChange(value, "email")}>
+                    <Label>Institutional Email *</Label>
+                    <Input placeholder="mentor@institution.edu" />
+                  </TextField>
+                  <TextField name="phone" value={formData.phone} onChange={(value) => handleChange(value, "phone")}>
+                    <Label>Phone *</Label>
+                    <Input placeholder="+1 234 567 8900" />
+                  </TextField>
+                  {emailError ? <p className="text-sm text-danger md:col-span-2">{emailError}</p> : null}
+                </div>
+              )}
+
+              {step === 2 && (
+                <div className="space-y-5">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <TextField name="website" value={formData.website} onChange={(value) => handleChange(value, "website")}>
+                      <Label>Website</Label>
+                      <Input placeholder="https://yourwebsite.com" />
+                    </TextField>
+                    <TextField name="degree" value={formData.degree} onChange={(value) => handleChange(value, "degree")}>
+                      <Label>Highest Degree *</Label>
+                      <Input placeholder={degrees[0]} />
+                    </TextField>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Skills & Expertise *</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={formData.currentSkill}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, currentSkill: e.target.value }))}
+                        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddSkill())}
+                        placeholder="e.g., React, Python, Leadership"
+                      />
+                      <Button type="button" onPress={handleAddSkill} variant="secondary"><Plus className="h-4 w-4" /></Button>
+                    </div>
+                    {skillError ? <p className="text-sm text-danger">{skillError}</p> : null}
+                    <div className="flex flex-wrap gap-2">
+                      {formData.skills.map((skill) => (
+                        <Chip key={skill} variant="secondary">
+                          <Chip.Label>{skill}</Chip.Label>
+                          <button type="button" onClick={() => setFormData((prev) => ({ ...prev, skills: prev.skills.filter((s) => s !== skill) }))}>
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Chip>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Languages</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={formData.currentLanguage}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, currentLanguage: e.target.value }))}
+                        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddLanguage())}
+                        placeholder="e.g., English"
+                      />
+                      <Button type="button" onPress={handleAddLanguage} variant="secondary">Add</Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.languages.map((lang) => (
+                        <Chip key={lang} variant="secondary">
+                          <Chip.Label>{lang}</Chip.Label>
+                          <button type="button" onClick={() => setFormData((prev) => ({ ...prev, languages: prev.languages.filter((l) => l !== lang) }))}>
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Chip>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Input
+                      value={formData.currentJob}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, currentJob: e.target.value }))}
+                      placeholder="Current Job Title"
+                    />
+                    <Input
+                      value={formData.currentCompany}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, currentCompany: e.target.value }))}
+                      placeholder="Company"
+                    />
+                    <Input
+                      value={formData.yearsOfExperience}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, yearsOfExperience: e.target.value }))}
+                      placeholder="Years of experience"
+                      className="md:col-span-2"
+                    />
+                    <Button type="button" onPress={handleAddExperience} variant="outline" className="md:col-span-2">Add Experience</Button>
+                  </div>
+
+                  {formData.experiences.length > 0 && (
+                    <div className="space-y-2">
+                      {formData.experiences.map((exp) => (
+                        <Card key={exp.id} variant="transparent" className="border">
+                          <Card.Content className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium">{exp.title}</p>
+                              <p className="text-xs text-muted">{exp.company} • {exp.years}</p>
+                            </div>
+                            <Button type="button" variant="ghost" isIconOnly onPress={() => setFormData((prev) => ({ ...prev, experiences: prev.experiences.filter((item) => item.id !== exp.id) }))}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </Card.Content>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+
+                  <TextField name="address" value={formData.address} onChange={(value) => handleChange(value, "address")}>
+                    <Label>Address</Label>
+                    <Input placeholder="Enter your address" />
+                  </TextField>
+
+                  <TextField name="bio" value={formData.bio} onChange={(value) => handleChange(value, "bio")}>
+                    <Label>Professional Bio *</Label>
+                    <TextArea rows={4} placeholder="Tell us about your background..." />
+                  </TextField>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between border-t pt-4">
+                <div>{step > 0 ? <Button type="button" variant="ghost" onPress={prevStep}>Back</Button> : null}</div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onPress={handleReset}>Reset</Button>
                   {step < steps.length - 1 ? (
-                    <Button
-                      type="button"
-                      onClick={nextStep}
-                      className="h-12 bg-gradient-to-r from-purple-600 to-pink-600 text-white"
-                    >
-                      Next
-                    </Button>
+                    <Button type="button" onPress={nextStep}>Next</Button>
                   ) : (
-                    <Link href={"/dashboard"}>
-                      <Button
-                        type="submit"
-                        className="h-12 bg-gradient-to-r from-purple-600 to-pink-600 text-white"
-                      >
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Submit Mentor Application
-                      </Button>
+                    <Link href="/dashboard">
+                      <Button type="submit"><CheckCircle className="mr-2 h-4 w-4" />Submit Mentor Application</Button>
                     </Link>
                   )}
                 </div>
               </div>
             </form>
-          </CardContent>
+          </Card.Content>
         </Card>
       </div>
     </div>

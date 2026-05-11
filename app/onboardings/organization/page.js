@@ -4,12 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { supabase } from "@/lib/supabase";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { AlertCircle, Upload, Building2, Globe, Tag, ArrowLeft, ArrowRight, CheckCircle } from "lucide-react";
+import { Button, Card, Input, Label, Surface, TextArea, TextField } from "@heroui/react";
+import { AlertCircle, Upload, Building2, Globe, Tag, ArrowLeft, ArrowRight } from "lucide-react";
 
 export default function OrganizationOnboardingPage() {
   const { user, isLoaded } = useUser();
@@ -29,7 +25,6 @@ export default function OrganizationOnboardingPage() {
   const handleLogoChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onloadend = () => {
       setLogoPreview(reader.result);
@@ -38,9 +33,15 @@ export default function OrganizationOnboardingPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+  const handleInputChange = (eOrValue, nameArg) => {
+    if (eOrValue && eOrValue.target) {
+      const { name, value } = eOrValue.target;
+      setForm((prev) => ({ ...prev, [name]: value }));
+      return;
+    }
+    if (nameArg) {
+      setForm((prev) => ({ ...prev, [nameArg]: eOrValue ?? "" }));
+    }
   };
 
   const handleSubmit = async () => {
@@ -78,94 +79,73 @@ export default function OrganizationOnboardingPage() {
   if (!isLoaded) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50/50 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        <Button 
-          variant="ghost" 
-          onClick={() => router.back()} 
-          className="mb-8 hover:bg-blue-50 text-blue-700 font-medium"
-        >
-          <ArrowLeft className="mr-2 w-4 h-4" /> Back to Selection
+    <div className="min-h-screen p-4 md:p-8">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+        <Button variant="ghost" onPress={() => router.back()} className="w-fit">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Selection
         </Button>
 
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center p-3 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-3xl w-16 h-16 mb-6 shadow-lg shadow-blue-200">
-            <Building2 className="w-8 h-8 text-white" />
+        <Surface variant="secondary" className="rounded-3xl p-6">
+          <div className="flex items-center gap-4">
+            <div className="rounded-2xl bg-accent p-3 text-accent-foreground">
+              <Building2 className="h-7 w-7" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold">Organization Profile</h1>
+              <p className="text-sm text-muted">Tell us about your company or institution.</p>
+            </div>
           </div>
-          <h1 className="text-4xl font-extrabold text-slate-900 mb-3">Organization Profile</h1>
-          <p className="text-slate-500 text-lg">Tell us about your company or institution</p>
-        </div>
+        </Surface>
 
-        {error && (
-          <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-2xl flex gap-3 items-center">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-            <p className="text-sm text-red-800 font-medium">{error}</p>
-          </div>
-        )}
+        {error ? (
+          <Card variant="secondary">
+            <Card.Content className="flex items-center gap-2 text-danger">
+              <AlertCircle className="h-4 w-4" />
+              <p className="text-sm">{error}</p>
+            </Card.Content>
+          </Card>
+        ) : null}
 
-        <Card className="shadow-xl border-slate-200/60 overflow-hidden rounded-3xl">
-          <div className="h-2 w-full bg-gradient-to-r from-blue-600 to-cyan-500" />
-          <CardContent className="p-8 md:p-12">
-            <div className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-700">Organization Name *</Label>
-                  <div className="relative group">
-                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                    <Input name="name" value={form.name} onChange={handleInputChange} className="pl-12 h-12 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500" placeholder="Acme Inc." />
-                  </div>
-                </div>
+        <Card>
+          <Card.Content className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <TextField name="name" value={form.name} onChange={(value) => handleInputChange(value, "name")}>
+                <Label>Organization Name *</Label>
+                <Input placeholder="Acme Inc." />
+              </TextField>
 
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-700">Website *</Label>
-                  <div className="relative group">
-                    <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                    <Input name="website" type="url" value={form.website} onChange={handleInputChange} className="pl-12 h-12 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500" placeholder="https://acme.com" />
-                  </div>
-                </div>
+              <TextField name="website" type="url" value={form.website} onChange={(value) => handleInputChange(value, "website")}>
+                <Label>Website *</Label>
+                <Input placeholder="https://acme.com" />
+              </TextField>
 
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="text-sm font-semibold text-slate-700">Category</Label>
-                  <div className="relative group">
-                    <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                    <Input name="category" value={form.category} onChange={handleInputChange} className="pl-12 h-12 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500" placeholder="e.g. Technology, Education, Research" />
-                  </div>
-                </div>
+              <TextField name="category" value={form.category} onChange={(value) => handleInputChange(value, "category")}>
+                <Label>Category</Label>
+                <Input placeholder="Technology, Education, Research" />
+              </TextField>
+            </div>
 
-                <div className="md:col-span-2 space-y-2">
-                  <Label className="text-sm font-semibold text-slate-700">Description</Label>
-                  <Textarea name="description" value={form.description} onChange={handleInputChange} rows={5} className="rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500 resize-none" placeholder="What does your organization do?" />
-                </div>
+            <TextField name="description" value={form.description} onChange={(value) => handleInputChange(value, "description")}>
+              <Label>Description</Label>
+              <TextArea rows={5} placeholder="What does your organization do?" />
+            </TextField>
 
-                <div className="md:col-span-2 space-y-4">
-                  <Label className="text-sm font-semibold text-slate-700">Organization Logo</Label>
-                  <div className="flex flex-col md:flex-row gap-6 items-center">
-                    {logoPreview && (
-                      <div className="relative w-32 h-32 rounded-2xl overflow-hidden border-2 border-blue-100 shadow-inner group">
-                        <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
-                        <button onClick={() => setLogoPreview(null)} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <span className="text-white text-xs font-bold">Remove</span>
-                        </button>
-                      </div>
-                    )}
-                    <label className={`flex-1 w-full h-32 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ${logoPreview ? 'border-blue-200 bg-blue-50/30' : 'border-slate-200 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/50'}`}>
-                      <Upload className="w-8 h-8 text-slate-400 mb-2" />
-                      <p className="text-sm font-medium text-slate-900">Click to upload logo</p>
-                      <p className="text-xs text-slate-500">PNG, JPG up to 2MB</p>
-                      <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-4 pt-8 border-t border-slate-100">
-                <Button onClick={handleSubmit} disabled={isSubmitting} className="flex-1 h-14 bg-gradient-to-r from-blue-600 to-cyan-500 hover:opacity-90 text-white font-bold text-lg rounded-2xl shadow-lg shadow-blue-200">
-                  {isSubmitting ? "Creating Profile..." : "Complete Setup"} <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-                <Button variant="outline" className="h-14 px-8 rounded-2xl border-slate-200 text-slate-600 font-semibold" disabled={isSubmitting}>Cancel</Button>
+            <div className="space-y-2">
+              <Label>Organization Logo</Label>
+              <div className="rounded-2xl border border-dashed p-4">
+                {logoPreview ? <img src={logoPreview} alt="Logo" className="mb-3 h-24 w-24 rounded-xl object-cover" /> : null}
+                <input type="file" accept="image/*" onChange={handleLogoChange} className="block w-full text-sm" />
               </div>
             </div>
-          </CardContent>
+
+            <div className="flex gap-3 pt-3">
+              <Button onPress={handleSubmit} isDisabled={isSubmitting} className="flex-1">
+                {isSubmitting ? "Creating Profile..." : "Complete Setup"}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <Button variant="outline" isDisabled={isSubmitting}>Cancel</Button>
+            </div>
+          </Card.Content>
         </Card>
       </div>
     </div>

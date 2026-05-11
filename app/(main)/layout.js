@@ -1,5 +1,5 @@
 import CoreUI from "@/components/custom/dashboard";
-
+import { MinimaDashboard } from "@/components/layouts/minima";
 export default function MainLayout({ children }) {
-  return <CoreUI>{children}</CoreUI>;
+  return <MinimaDashboard>{children}</MinimaDashboard>;
 }

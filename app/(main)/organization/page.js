@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Chip, Input, Card } from "@heroui/react";
+import { Chip, Card } from "@heroui/react";
 import { Select, ListBox } from "@heroui/react";
 import { data } from "@/config/data";
 import { Button } from "@heroui/react";
 import { ButtonGroup } from "@heroui/react";
-import { Filter } from "lucide-react";
 import { Trash } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
+import { InputGroup } from "@heroui/react";
+import { Search } from "lucide-react";
 
 export default function OrganizationsPage() {
   const [search, setSearch] = useState("");
@@ -39,21 +41,34 @@ export default function OrganizationsPage() {
       </h1>
 
       <div className="px-4 mb-8 flex justify-between">
-        <Input
-          placeholder="Search organization"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-fit"
-        />
+        <InputGroup>
+          <InputGroup.Prefix>
+            <Search className="size-4" />
+          </InputGroup.Prefix>
+          <InputGroup.Input
+            placeholder="Search organization"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-fit"
+          />
+        </InputGroup>
         <div className="flex gap-2">
-          <ButtonGroup>
-          </ButtonGroup>
-            <Button variant="secondary"><Filter />Filter</Button>
-            <Button isIconOnly variant="danger-soft"><Trash /></Button>
-          <Select onValueChange={setIndustry} defaultValue="all" className="min-w-[140px]">
+          <ButtonGroup></ButtonGroup>
+          <Button variant="secondary">
+            <SlidersHorizontal />
+            Filter
+          </Button>
+          <Button isIconOnly variant="danger-soft">
+            <Trash />
+          </Button>
+          <Select
+            onValueChange={setIndustry}
+            defaultValue="all"
+            className="min-w-[140px]"
+          >
             <Select.Trigger>
               <Select.Value />
-              <Select.Indicator/>
+              <Select.Indicator />
             </Select.Trigger>
             <Select.Popover>
               <ListBox>

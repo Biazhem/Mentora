@@ -12,7 +12,7 @@ export function FabButton() {
         isIconOnly
         variant="primary"
         color="primary"
-        className={"fixed bottom-6 right-6 shadow-2xl h-16 w-16"}
+        className={"fixed bottom-6 right-6 shadow-2xl h-16 w-16 z-10"}
         onPress={() => console.log("FAB pressed")}
       >
         <MessageCircleMore className="size-5" />
