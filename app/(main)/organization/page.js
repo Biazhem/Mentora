@@ -36,9 +36,14 @@ export default function OrganizationsPage() {
 
   return (
     <div className="py-12">
-      <h1 className="text-2xl font-semibold text-center mb-8">
-        Partner Organizations
-      </h1>
+      <div className="mb-4 px-4">
+        <h1 className="text-2xl font-semibold text-left">
+          Explore Organizations
+        </h1>
+        <p className="text-sm text-muted">
+          Get deep info about organizations from the whole world
+        </p>
+      </div>
 
       <div className="px-4 mb-8 flex justify-between">
         <InputGroup>

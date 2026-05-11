@@ -1,45 +1,35 @@
 "use client";
 
 import {
-  Avatar,
-  Breadcrumbs,
   Button,
-  ButtonGroup,
-  Dropdown,
-  Popover,
   Tooltip,
 } from "@heroui/react";
 import {
-  DribbbleLogoIcon,
-  FigmaLogoIcon,
-  ThreadsLogoIcon,
-} from "@phosphor-icons/react/dist/ssr";
-import {
-  ArrowDown,
   Building2,
   CheckCheck,
-  Home,
   LayoutDashboard,
   LogOut,
-  Search,
-  User,
-  Bell,
   Settings,
   DollarSign,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { ThemeSwitch } from "@/components/theme/theme-switcher"
 import { GraduationCap } from "lucide-react";
 import { Briefcase } from "lucide-react";
 import { Presentation } from "lucide-react";
-import { FabButton } from "../custom/drawer";
-import { useUser } from "@clerk/nextjs";
+import { SignOutButton, useUser } from "@clerk/nextjs";
+import MainHeader from "./main-header";
 
 export function MinimaDashboard({ children }) {
-  
-  const { user: { firstName, lastName, imageUrl, hasImage } } = useUser();
+  const { user, isLoaded } = useUser();
   const [item, setItem] = useState(1);
+
+  const firstName = user?.firstName ?? "";
+  const lastName = user?.lastName ?? "";
+  const fullName = user?.fullName ?? "User";
+  const imageUrl = user?.imageUrl;
+  const emailAddress = user?.primaryEmailAddress?.emailAddress ?? "";
+  const fallbackInitials = `${firstName.charAt(0)}${lastName.charAt(0)}`.trim() || "U";
   const icons = [
     { icon: LayoutDashboard, title: "Dashboard", url: "/dashboard" },
     { icon: Briefcase , title: "Jobs", url: "/job" },
@@ -96,89 +86,26 @@ export function MinimaDashboard({ children }) {
           </Tooltip>
 
           <Tooltip delay={0}>
-            <Button variant="tertiary" isIconOnly size="lg">
-              <LogOut className="text-background-inverse" />
-            </Button>
+            <SignOutButton>
+              <Button variant="tertiary" isIconOnly size="lg">
+                <LogOut className="text-background-inverse" />
+              </Button>
+            </SignOutButton>
             <Tooltip.Content placement="left" offset={10}>
-              <p>Logut</p>
+              <p>Logout</p>
             </Tooltip.Content>
           </Tooltip>
         </div>
       </aside>
 
       <main className="flex-1 min-w-0 p-5 bg-background m-3 rounded-3xl shadow-sm lg:ml-[92px] space-y-3">
-        <div className="w-full flex justify-between items-center h-10">
-          <Breadcrumbs>
-            <Breadcrumbs.Item href="#">Home</Breadcrumbs.Item>
-            <Breadcrumbs.Item href="#">Institutes</Breadcrumbs.Item>
-            <Breadcrumbs.Item>TaskX</Breadcrumbs.Item>
-          </Breadcrumbs>
-          <div className="flex items-center justify-between gap-2">
-            <ButtonGroup>
-              <Button isIconOnly size="lg" variant="tertiary">
-                <Settings />
-              </Button>
-            </ButtonGroup>
-            <ThemeSwitch />
-            <Popover>
-              <Button isIconOnly>
-                <Avatar color="accent">
-                  <Avatar.Image src={imageUrl} alt={firstName} />
-                  <Avatar.Fallback className="bg-accent text-background">
-                    {firstName[0]+lastName[0]}
-                  </Avatar.Fallback>
-                </Avatar>
-              </Button>
-              <Popover.Content className="w-[320px] mt-3" placement="left">
-                <Popover.Dialog>
-                  <Popover.Arrow />
-                  <Popover.Heading>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-start flex-col">
-                        <div className="rounded-lg h-12 overflow-hidden">
-                          <img
-                            className="object-cover object-top w-full"
-                            src="https://images.unsplash.com/photo-1549880338-65ddcdfd017b?ixlib=rb-1.2.1&q=80&fm=jpg&crop=entropy&cs=tinysrgb&w=400&fit=max&ixid=eyJhcHBfaWQiOjE0NTg5fQ"
-                            alt="Mountain"
-                          />
-                        </div>
-                        <Avatar
-                          size="lg"
-                          className="-mt-6 ml-4 ring-2 ring-white"
-                        >
-                          <Avatar.Image
-                            alt="Sarah Johnson"
-                            src="https://img.heroui.chat/image/avatar?w=400&h=400&u=1"
-                          />
-                          <Avatar.Fallback>SJ</Avatar.Fallback>
-                        </Avatar>
-                        <div className="mt-2">
-                          <p className="text-base">Alex John</p>
-                          <p className="text-muted text-sm">alex.co@ins.edu</p>
-                        </div>
-                      </div>
-                    </div>
-                  </Popover.Heading>
-                  <p className="mt-3 text-sm text-muted">
-                    Product designer and creative director. Building beautiful
-                    experiences that matter.
-                  </p>
-                  <div className="mt-2 flex justify-end">
-                    <ButtonGroup variant="secondary">
-                      <Button isIconOnly>
-                        <DribbbleLogoIcon />
-                      </Button>
-                      <Button isIconOnly>
-                        <ThreadsLogoIcon />
-                      </Button>
-                    </ButtonGroup>
-                  </div>
-                </Popover.Dialog>
-              </Popover.Content>
-            </Popover>
-          </div>
-          <FabButton />
-        </div>
+        <MainHeader
+          imageUrl={imageUrl}
+          fallbackInitials={fallbackInitials}
+          fullName={fullName}
+          isLoaded={isLoaded}
+          emailAddress={emailAddress}
+        />
         {children}
       </main>
     </div>
