@@ -16,6 +16,7 @@ import { ThemeSwitch } from "../theme/theme-switcher";
 import { Settings } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useOrgSelectorStore } from "@/stores/org-selector";
+import { NavigationSidebarSmall } from "./navigation-sidebar-sm";
 
 export default function MainHeader({
   fullName,
@@ -41,25 +42,28 @@ export default function MainHeader({
 
   return (
     <div className="w-full flex justify-between items-center h-10">
-      <Breadcrumbs>
-        <Breadcrumbs.Item href="/">Home</Breadcrumbs.Item>
-        {breadcrumbs.map((item, index) => {
-          const isLast = index === breadcrumbs.length - 1;
+      <div className="flex items-center gap-2">
+        <NavigationSidebarSmall />
+        <Breadcrumbs>
+          <Breadcrumbs.Item href="/">Home</Breadcrumbs.Item>
+          {breadcrumbs.map((item, index) => {
+            const isLast = index === breadcrumbs.length - 1;
 
-          if (isLast) {
-            return <Breadcrumbs.Item key={item.href}>{item.label}</Breadcrumbs.Item>;
-          }
+            if (isLast) {
+              return <Breadcrumbs.Item key={item.href}>{item.label}</Breadcrumbs.Item>;
+            }
 
-          return (
-            <Breadcrumbs.Item key={item.href} href={item.href}>
-              {item.label}
-            </Breadcrumbs.Item>
-          );
-        })}
-      </Breadcrumbs>
+            return (
+              <Breadcrumbs.Item key={item.href} href={item.href}>
+                {item.label}
+              </Breadcrumbs.Item>
+            );
+          })}
+        </Breadcrumbs>
+      </div>
       <div className="flex items-center justify-between gap-2">
         <Select
-          className="w-56"
+          className="hidden w-56 lg:block"
           placeholder="Select organization"
           value={selectedOrganizationId}
           onChange={(value) => setSelectedOrganizationId(value)}
