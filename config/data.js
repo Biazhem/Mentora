@@ -44,35 +44,40 @@ export const data = {
     {
       org_index: 1,
       title: "Frontend Developer",
-      description: "React developer needed",
+      description:
+        "We are looking for a frontend developer to build and maintain responsive user interfaces using React and modern JavaScript. You will work closely with product and design teams to turn requirements into reusable components, improve page performance, and deliver polished user experiences across desktop and mobile screens.",
       type: ["full-time"],
       timing: ["Flexible"],
     },
     {
       org_index: 1,
       title: "AI Engineer",
-      description: "Work on ML models",
+      description:
+        "Join our AI team to design, train, and deploy machine learning models for real-world products. The role includes data preprocessing, model evaluation, experimentation with new architectures, and collaboration with backend engineers to integrate intelligent features into scalable production systems.",
       type: ["full-time"],
       timing: ["Immediate"],
     },
     {
       org_index: 2,
       title: "Backend Intern",
-      description: "Node.js internship",
+      description:
+        "This internship is ideal for someone who wants hands-on backend experience with Node.js and APIs. You will assist in building REST endpoints, writing database queries, adding validation and error handling, and supporting testing and documentation efforts while learning production-grade development workflows.",
       type: ["internship"],
       timing: ["Flexible"],
     },
     {
       org_index: 3,
       title: "Full Stack Developer",
-      description: "MERN stack role",
+      description:
+        "We need a full stack developer with strong MERN skills to deliver end-to-end features from UI to database. You will implement frontend views, backend services, authentication flows, and third-party integrations, while ensuring code quality, maintainability, and smooth collaboration with cross-functional teams.",
       type: ["contract"],
       timing: ["Immediate"],
     },
     {
       org_index: 0,
       title: "Python Developer",
-      description: "API development",
+      description:
+        "Seeking a Python developer to build reliable APIs and automation services for internal and customer-facing tools. You will design clean application logic, optimize data access, integrate external services, and write maintainable tests and documentation to support continuous delivery and long-term platform stability.",
       type: ["part-time"],
       timing: ["Flexible"],
     },

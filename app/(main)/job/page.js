@@ -1,11 +1,17 @@
 "use client";
 
-import { Card, Button } from "@heroui/react";
+import { useState } from "react";
+import { Button } from "@heroui/react";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Search, SlidersHorizontal, Trash } from "lucide-react";
 import { data } from "@/config/data";
+import { InputGroup, Select, ListBox } from "@heroui/react";
+import { JobDrawer } from "@/components/custom/drawer-jobs";
 
 export default function JobsPage() {
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+
   const jobs = data.jobs.map((job, idx) => ({
     id: idx + 1,
     title: job.title,
@@ -15,72 +21,80 @@ export default function JobsPage() {
       .replace(/\s+/g, "-"),
     location: "Remote",
     type: job.type[0],
+    timing: job.timing[0],
     description: job.description,
     image: data.organizations[job.org_index].logo,
   }));
+  const filteredJobs = jobs.filter((job) => {
+    const matchesSearch =
+      job.title.toLowerCase().includes(search.toLowerCase()) ||
+      job.company.toLowerCase().includes(search.toLowerCase());
+    const matchesType = typeFilter === "all" || job.type === typeFilter;
+
+    return matchesSearch && matchesType;
+  });
 
   return (
-    <div className="w-full">
-      {/* Header */}
-      <div className="mb-10">
-        <div className="w-full flex justify-between">
-          <p className="text-2xl font-semibold tracking-tight">
-            Job Opportunities
-          </p>
+    <div className="py-12">
+      <div className="mb-4 px-4">
+        <h1 className="text-2xl font-semibold text-left">Job Opportunities</h1>
+        <p className="text-sm text-muted">
+          Carefully selected roles to help you grow your career
+        </p>
+      </div>
 
+      <div className="px-4 mb-8 flex justify-between gap-3 flex-wrap">
+        <InputGroup>
+          <InputGroup.Prefix>
+            <Search className="size-4" />
+          </InputGroup.Prefix>
+          <InputGroup.Input
+            placeholder="Search jobs"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-fit"
+          />
+        </InputGroup>
+
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="secondary">
+            <SlidersHorizontal />
+            Filter
+          </Button>
+          <Button isIconOnly variant="danger-soft" onPress={() => setTypeFilter("all")}>
+            <Trash />
+          </Button>
+          <Select
+            onValueChange={setTypeFilter}
+            defaultValue="all"
+            className="min-w-[140px]"
+          >
+            <Select.Trigger>
+              <Select.Value />
+              <Select.Indicator />
+            </Select.Trigger>
+            <Select.Popover>
+              <ListBox>
+                <ListBox.Item value="all">All Types</ListBox.Item>
+                <ListBox.Item value="Full-time">Full-time</ListBox.Item>
+                <ListBox.Item value="Part-time">Part-time</ListBox.Item>
+                <ListBox.Item value="Internship">Internship</ListBox.Item>
+                <ListBox.Item value="Contract">Contract</ListBox.Item>
+              </ListBox>
+            </Select.Popover>
+          </Select>
           <Link href="/jobs/create">
-            <Button size="lg">
+            <Button>
               <Plus />
               Create
             </Button>
           </Link>
         </div>
-
-        <p className="text-sm text-muted-foreground mt-1">
-          Carefully selected roles to help you grow your career
-        </p>
       </div>
 
-      {/* Jobs Grid */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {jobs.map((job) => (
-          <Link key={job.id} href={`/jobs/details?det=${job.id}`}>
-            <Card className="w-full items-stretch md:flex-row">
-              {/* Image */}
-              <div className="relative h-[120px] w-full shrink-0 overflow-hidden rounded-xl md:w-[120px]">
-                <img
-                  src={job.image}
-                  alt={job.company}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              </div>
-
-              {/* Content */}
-              <div className="flex flex-1 flex-col p-4">
-                {/* Title + company */}
-                <Card.Header className="p-0 mb-1">
-                  <Card.Title className="text-lg">{job.title}</Card.Title>
-                  <Card.Description>
-                    {job.company}, {job.location}
-                  </Card.Description>
-                </Card.Header>
-
-                {/* Description (LEFT / main area) */}
-                <p className="text-sm text-muted-foreground text-left mb-3">
-                  {job.description}
-                </p>
-
-                {/* Footer */}
-                <Card.Footer className="p-0 mt-auto flex justify-between items-center">
-                  <span className="text-xs px-3 py-1 rounded-full bg-secondary">
-                    {job.type}
-                  </span>
-
-                  <Button size="sm">Apply</Button>
-                </Card.Footer>
-              </div>
-            </Card>
-          </Link>
+      <div className="px-4 grid gap-6 md:grid-cols-2">
+        {filteredJobs.map((job) => (
+          <JobDrawer key={job.id} job={job} />
         ))}
       </div>
     </div>

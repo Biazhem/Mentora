@@ -2,101 +2,97 @@
 
 import React from "react";
 import Link from "next/link";
-import { 
-  NavigationMenu, 
-  NavigationMenuContent, 
-  NavigationMenuItem, 
-  NavigationMenuLink, 
-  NavigationMenuList, 
-  NavigationMenuTrigger,
-  navigationMenuTriggerStyle 
-} from "@/components/ui/navigation-menu";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { Button, Description, Dropdown, Label } from "@heroui/react";
 import { Briefcase, Calendar, Users, Building2, Rocket } from "lucide-react";
 import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
-const components = [
+const exploreItems = [
   {
     title: "Job Portal",
     href: "/jobs",
     description: "Discover internships and full-time roles from top companies.",
-    icon: <Briefcase className="h-4 w-4" />,
+    icon: Briefcase,
   },
   {
     title: "Events",
     href: "/events",
     description: "Join workshops, webinars, and networking meetups.",
-    icon: <Calendar className="h-4 w-4" />,
+    icon: Calendar,
   },
   {
     title: "Mentorship",
     href: "/mentor",
     description: "Connect with alumni and industry experts for guidance.",
-    icon: <Users className="h-4 w-4" />,
+    icon: Users,
   },
   {
     title: "Organizations",
     href: "/organizations",
     description: "Explore partner companies and their culture.",
-    icon: <Building2 className="h-4 w-4" />,
+    icon: Building2,
   },
 ];
 
 export function Header() {
+  const router = useRouter();
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-sm px-3">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 px-3 backdrop-blur-sm">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center space-x-2">
-            <div className="bg-primary rounded-lg p-1.5">
+            <div className="rounded-lg bg-primary p-1.5">
               <Rocket className="h-5 w-5 text-primary-foreground" />
             </div>
             <span className="text-xl font-bold tracking-tight">Mentora</span>
           </Link>
 
-          <NavigationMenu className="hidden md:flex">
-            <NavigationMenuList>
-              <NavigationMenuItem>
-                <NavigationMenuTrigger>Explore</NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <ul className="grid w-400px gap-3 p-4 md:w-500px md:grid-cols-2 lg:w-600px">
-                    {components.map((component) => (
-                      <ListItem
-                        key={component.title}
-                        title={component.title}
-                        href={component.href}
-                        icon={component.icon}
-                      >
-                        {component.description}
-                      </ListItem>
-                    ))}
-                  </ul>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
-              <NavigationMenuItem>
-                <Link href="/tasks" legacyBehavior passHref>
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                    Tasks
-                  </NavigationMenuLink>
-                </Link>
-              </NavigationMenuItem>
-              <NavigationMenuItem>
-                <Link href="/about" legacyBehavior passHref>
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                    About
-                  </NavigationMenuLink>
-                </Link>
-              </NavigationMenuItem>
-            </NavigationMenuList>
-          </NavigationMenu>
+          <nav className="hidden items-center gap-2 md:flex">
+            <Dropdown>
+              <Button aria-label="Explore" size="sm" variant="ghost">
+                Explore
+              </Button>
+              <Dropdown.Popover className="w-[420px] max-w-[90vw]">
+                <Dropdown.Menu
+                  aria-label="Explore links"
+                  onAction={(key) => {
+                    router.push(String(key));
+                  }}
+                >
+                  {exploreItems.map((item) => {
+                    const Icon = item.icon;
+
+                    return (
+                      <Dropdown.Item id={item.href} key={item.href} textValue={item.title}>
+                        <Icon className="mt-0.5 size-4 shrink-0 text-muted" />
+                        <div className="flex flex-col gap-0.5">
+                          <Label>{item.title}</Label>
+                          <Description className="line-clamp-2 text-sm">{item.description}</Description>
+                        </div>
+                      </Dropdown.Item>
+                    );
+                  })}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown>
+
+            <Button onPress={() => router.push("/tasks")} size="sm" variant="ghost">
+              Tasks
+            </Button>
+            <Button onPress={() => router.push("/about")} size="sm" variant="ghost">
+              About
+            </Button>
+          </nav>
         </div>
 
         <div className="flex items-center gap-4">
           <SignedOut>
             <div className="flex items-center gap-2">
-              <SignInButton mode="modal" forceRedirectUrl={"/callback"}>
-                <Button variant="ghost" size="sm">Log in</Button>
+              <SignInButton forceRedirectUrl="/callback" mode="modal">
+                <Button size="sm" variant="ghost">
+                  Log in
+                </Button>
               </SignInButton>
               <SignUpButton mode="modal">
                 <Button size="sm">Get Started</Button>
@@ -105,15 +101,15 @@ export function Header() {
           </SignedOut>
           <SignedIn>
             <div className="flex items-center gap-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm">Dashboard</Button>
-              </Link>
-              <UserButton 
+              <Button onPress={() => router.push("/dashboard")} size="sm" variant="ghost">
+                Dashboard
+              </Button>
+              <UserButton
                 afterSignOutUrl="/"
                 appearance={{
                   elements: {
-                    userButtonAvatarBox: "h-8 w-8"
-                  }
+                    userButtonAvatarBox: "h-8 w-8",
+                  },
                 }}
               />
             </div>
@@ -123,28 +119,3 @@ export function Header() {
     </header>
   );
 }
-
-const ListItem = React.forwardRef(({ className, title, children, icon, ...props }, ref) => {
-  return (
-
-      <NavigationMenuLink asChild>
-        <a
-          ref={ref}
-          className={cn(
-            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-            className
-          )}
-          {...props}
-        >
-          <div className="flex items-center gap-2 text-sm font-medium leading-none">
-            {icon}
-            <span>{title}</span>
-          </div>
-          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-            {children}
-          </p>
-        </a>
-      </NavigationMenuLink>
-  );
-});
-ListItem.displayName = "ListItem";

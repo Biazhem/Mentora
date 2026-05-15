@@ -11,13 +11,15 @@ import { Label, ListBox, Select } from "@heroui/react";
 import { X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { tasks } from "@/config/data";
+import { Search, SlidersHorizontal, Trash } from "lucide-react";
 
-import { Card, Chip, Button } from "@heroui/react";
+import { Card, Chip, Button, InputGroup } from "@heroui/react";
 
 import { DateRangePicker, DateField, RangeCalendar } from "@heroui/react";
 
 export default function TasksPage() {
   const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
 
   // HeroUI format
   const [dateRange, setDateRange] = useState({
@@ -37,118 +39,144 @@ export default function TasksPage() {
       !dateRange?.start ||
       !dateRange?.end ||
       (taskStart >= dateRange.start && taskStart <= dateRange.end);
+    const searchMatch =
+      task.title.toLowerCase().includes(search.toLowerCase()) ||
+      task.description.toLowerCase().includes(search.toLowerCase());
 
-    return statusMatch && rangeMatch;
+    return statusMatch && rangeMatch && searchMatch;
   });
 
   return (
     <div className="py-12 px-4">
-      <h1 className="text-2xl font-semibold mb-6">Tasks</h1>
+      <div className="mb-4">
+        <h1 className="text-2xl font-semibold text-left">Tasks</h1>
+        <p className="text-sm text-muted">
+          Track progress and manage deliverables across your workflow
+        </p>
+      </div>
 
-      {/* Filters */}
-      <div className="flex justify-between mb-8 gap-4 flex-wrap">
+      <div className="mb-8 flex justify-between gap-4 flex-wrap">
+        <InputGroup>
+          <InputGroup.Prefix>
+            <Search className="size-4" />
+          </InputGroup.Prefix>
+          <InputGroup.Input
+            placeholder="Search tasks"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-fit"
+          />
+        </InputGroup>
+
+        <div className="flex justify-between items-center gap-4 flex-wrap">
+          <Button variant="secondary">
+            <SlidersHorizontal />
+            Filter
+          </Button>
+          
+
         {/* Status Filter */}
-        <Select
-          className="w-[256px]"
-          placeholder="Select status"
-          selectedKeys={statusFilter ? [statusFilter] : []}
-          onSelectionChange={(keys) => {
-            const value = Array.from(keys)[0];
-            setStatusFilter(value || "all");
-          }}
-        >
-          <Label>Status</Label>
+          <Select
+            className="w-45"
+            placeholder="Select status"
+            selectedKeys={statusFilter ? [statusFilter] : []}
+            onSelectionChange={(keys) => {
+              const value = Array.from(keys)[0];
+              setStatusFilter(value || "all");
+            }}
+          >
 
-          <Select.Trigger>
-            <Select.Value />
-            <Select.Indicator />
-          </Select.Trigger>
+            <Select.Trigger>
+              <Select.Value />
+              <Select.Indicator />
+            </Select.Trigger>
 
-          <Select.Popover>
-            <ListBox>
-              <ListBox.Item id="all" textValue="All Status">
-                All Status
-                <ListBox.ItemIndicator />
-              </ListBox.Item>
+            <Select.Popover>
+              <ListBox>
+                <ListBox.Item id="all" textValue="All Status">
+                  All Status
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
 
-              <ListBox.Item id="Pending" textValue="Pending">
-                Pending
-                <ListBox.ItemIndicator />
-              </ListBox.Item>
+                <ListBox.Item id="Pending" textValue="Pending">
+                  Pending
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
 
-              <ListBox.Item id="In Progress" textValue="In Progress">
-                In Progress
-                <ListBox.ItemIndicator />
-              </ListBox.Item>
+                <ListBox.Item id="In Progress" textValue="In Progress">
+                  In Progress
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
 
-              <ListBox.Item id="Completed" textValue="Completed">
-                Completed
-                <ListBox.ItemIndicator />
-              </ListBox.Item>
-            </ListBox>
-          </Select.Popover>
-        </Select>
+                <ListBox.Item id="Completed" textValue="Completed">
+                  Completed
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+              </ListBox>
+            </Select.Popover>
+          </Select>
 
-        {/* Date Range Filter (HeroUI) */}
-        <div className="flex gap-2 items-center">
-          <DateRangePicker value={dateRange} onChange={setDateRange}>
-            <DateField.Group>
-              <DateField.InputContainer>
-                <DateField.Input slot="start">
-                  {(segment) => <DateField.Segment segment={segment} />}
-                </DateField.Input>
+          {/* Date Range Filter (HeroUI) */}
+          <div className="flex gap-2 items-center">
+            <DateRangePicker value={dateRange} onChange={setDateRange}>
+              <DateField.Group>
+                <DateField.InputContainer>
+                  <DateField.Input slot="start">
+                    {(segment) => <DateField.Segment segment={segment} />}
+                  </DateField.Input>
 
-                <DateRangePicker.RangeSeparator />
+                  <DateRangePicker.RangeSeparator />
 
-                <DateField.Input slot="end">
-                  {(segment) => <DateField.Segment segment={segment} />}
-                </DateField.Input>
-              </DateField.InputContainer>
+                  <DateField.Input slot="end">
+                    {(segment) => <DateField.Segment segment={segment} />}
+                  </DateField.Input>
+                </DateField.InputContainer>
 
-              <DateField.Suffix>
-                <DateRangePicker.Trigger>
-                  <DateRangePicker.TriggerIndicator />
-                </DateRangePicker.Trigger>
-              </DateField.Suffix>
-            </DateField.Group>
+                <DateField.Suffix>
+                  <DateRangePicker.Trigger>
+                    <DateRangePicker.TriggerIndicator />
+                  </DateRangePicker.Trigger>
+                </DateField.Suffix>
+              </DateField.Group>
 
-            <DateRangePicker.Popover>
-              <RangeCalendar aria-label="Filter tasks by date range">
-                <RangeCalendar.Header>
-                  <RangeCalendar.YearPickerTrigger>
-                    <RangeCalendar.YearPickerTriggerHeading />
-                    <RangeCalendar.YearPickerTriggerIndicator />
-                  </RangeCalendar.YearPickerTrigger>
+              <DateRangePicker.Popover>
+                <RangeCalendar aria-label="Filter tasks by date range">
+                  <RangeCalendar.Header>
+                    <RangeCalendar.YearPickerTrigger>
+                      <RangeCalendar.YearPickerTriggerHeading />
+                      <RangeCalendar.YearPickerTriggerIndicator />
+                    </RangeCalendar.YearPickerTrigger>
 
-                  <RangeCalendar.NavButton slot="previous" />
-                  <RangeCalendar.NavButton slot="next" />
-                </RangeCalendar.Header>
+                    <RangeCalendar.NavButton slot="previous" />
+                    <RangeCalendar.NavButton slot="next" />
+                  </RangeCalendar.Header>
 
-                <RangeCalendar.Grid>
-                  <RangeCalendar.GridHeader>
-                    {(day) => (
-                      <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>
-                    )}
-                  </RangeCalendar.GridHeader>
+                  <RangeCalendar.Grid>
+                    <RangeCalendar.GridHeader>
+                      {(day) => (
+                        <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>
+                      )}
+                    </RangeCalendar.GridHeader>
 
-                  <RangeCalendar.GridBody>
-                    {(date) => <RangeCalendar.Cell date={date} />}
-                  </RangeCalendar.GridBody>
-                </RangeCalendar.Grid>
-              </RangeCalendar>
-            </DateRangePicker.Popover>
-          </DateRangePicker>
+                    <RangeCalendar.GridBody>
+                      {(date) => <RangeCalendar.Cell date={date} />}
+                    </RangeCalendar.GridBody>
+                  </RangeCalendar.Grid>
+                </RangeCalendar>
+              </DateRangePicker.Popover>
+            </DateRangePicker>
 
-          {/* Clear Button */}
-          {dateRange?.start && (
-            <Button
-              variant="danger-soft"
-              onClick={() => setDateRange({ start: null, end: null })}
-            >
-              <X />
-              Clear
-            </Button>
-          )}
+            {/* Clear Button */}
+            {dateRange?.start && (
+              <Button
+                variant="danger-soft"
+                onClick={() => setDateRange({ start: null, end: null })}
+              >
+                <X />
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 

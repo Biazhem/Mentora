@@ -86,7 +86,7 @@ export function MinimaDashboard({ children }) {
           </Tooltip>
 
           <Tooltip delay={0}>
-            <SignOutButton>
+            <SignOutButton redirectUrl="/">
               <Button variant="tertiary" isIconOnly size="lg">
                 <LogOut className="text-background-inverse" />
               </Button>

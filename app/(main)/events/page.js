@@ -1,14 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { Button, Card, CloseButton } from "@heroui/react";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Search, SlidersHorizontal, Trash } from "lucide-react";
 import { data } from "@/config/data";
-import { Chip } from "@heroui/react";
+import { Chip, InputGroup, ListBox, Select } from "@heroui/react";
 import { Separator } from "@heroui/react";
 import { ArrowUpRight } from "lucide-react";
 
 export default function EventsPage() {
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+
   // Transform mock data to match component structure
   const organization = data.organizations.map((org) => ({
     image: org.logo,
@@ -31,26 +35,74 @@ export default function EventsPage() {
     startDate: event.start_date,
     endDate: event.end_date,
   }));
+  const filteredEvents = events.filter((event) => {
+    const matchesSearch =
+      event.title.toLowerCase().includes(search.toLowerCase()) ||
+      event.location.toLowerCase().includes(search.toLowerCase());
+    const matchesType = typeFilter === "all" || event.type === typeFilter;
+
+    return matchesSearch && matchesType;
+  });
+
   return (
-    <div className="container py-10">
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-semibold">Events</h1>
-          <p className="text-sm text-muted-foreground">
-            Learn, connect, and grow with Mentora events
-          </p>
-        </div>
-        <Link href="/events/create">
-          <Button size="sm">
-            <Plus className="mr-2" />
-            Create Event
-          </Button>
-        </Link>
+    <div className="py-12">
+      <div className="mb-4 px-4">
+        <h1 className="text-2xl font-semibold text-left">Events</h1>
+        <p className="text-sm text-muted">Learn, connect, and grow with Mentora events</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {events.map((event) => (
-          <Card className="w-full items-stretch md:flex-row cursor-pointer">
+      <div className="px-4 mb-8 flex justify-between gap-3 flex-wrap">
+        <InputGroup>
+          <InputGroup.Prefix>
+            <Search className="size-4" />
+          </InputGroup.Prefix>
+          <InputGroup.Input
+            placeholder="Search events"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-fit"
+          />
+        </InputGroup>
+
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="secondary">
+            <SlidersHorizontal />
+            Filter
+          </Button>
+          <Button isIconOnly variant="danger-soft" onPress={() => setTypeFilter("all")}>
+            <Trash />
+          </Button>
+          <Select
+            onValueChange={setTypeFilter}
+            defaultValue="all"
+            className="min-w-[140px]"
+          >
+            <Select.Trigger>
+              <Select.Value />
+              <Select.Indicator />
+            </Select.Trigger>
+            <Select.Popover>
+              <ListBox>
+                <ListBox.Item value="all">All Types</ListBox.Item>
+                <ListBox.Item value="Hackathon">Hackathon</ListBox.Item>
+                <ListBox.Item value="Webinar">Webinar</ListBox.Item>
+                <ListBox.Item value="Workshop">Workshop</ListBox.Item>
+                <ListBox.Item value="Meetup">Meetup</ListBox.Item>
+              </ListBox>
+            </Select.Popover>
+          </Select>
+          <Link href="/events/create">
+            <Button>
+              <Plus />
+              Create Event
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      <div className="px-4 grid gap-6 md:grid-cols-2">
+        {filteredEvents.map((event) => (
+          <Card key={event.id} className="w-full items-stretch md:flex-row cursor-pointer">
             <div className="relative h-[140px] w-full shrink-0 overflow-hidden rounded-2xl sm:h-[120px] sm:w-[120px]">
               <img
                 alt="alts"

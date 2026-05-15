@@ -14,9 +14,8 @@ import {
 import { FabButton } from "../custom/drawer";
 import { ThemeSwitch } from "../theme/theme-switcher";
 import { Settings } from "lucide-react";
-import Image from "next/image";
-import { data } from "@/config/data";
 import { usePathname } from "next/navigation";
+import { useOrgSelectorStore } from "@/stores/org-selector";
 
 export default function MainHeader({
   fullName,
@@ -25,7 +24,9 @@ export default function MainHeader({
   isLoaded,
   emailAddress,
 }) {
-  const organization = data.organizations;
+  const organizations = useOrgSelectorStore((state) => state.organizations);
+  const selectedOrganizationId = useOrgSelectorStore((state) => state.selectedOrganizationId);
+  const setSelectedOrganizationId = useOrgSelectorStore((state) => state.setSelectedOrganizationId);
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
   const breadcrumbs = segments.map((segment, index) => {
@@ -59,8 +60,9 @@ export default function MainHeader({
       <div className="flex items-center justify-between gap-2">
         <Select
           className="w-56"
-          placeholder="Select member"
-          defaultValue={1}
+          placeholder="Select organization"
+          value={selectedOrganizationId}
+          onChange={(value) => setSelectedOrganizationId(value)}
         >
           <Select.Trigger>
             <Select.Value className={"flex items-center gap-2 "} />
@@ -68,8 +70,8 @@ export default function MainHeader({
           </Select.Trigger>
           <Select.Popover>
             <ListBox>
-              {organization.slice(0, 3).map((itm) => (
-                <ListBox.Item key={itm.id} id={itm.id} textValue={itm.name}>
+              {organizations.map((itm) => (
+                <ListBox.Item key={itm.id} id={String(itm.id)} textValue={itm.name}>
                   <Avatar size="sm">
                     <Avatar.Image
                       alt={itm.name}
@@ -80,7 +82,7 @@ export default function MainHeader({
                   </Avatar>
                   <div className="flex flex-col">
                     <Label>{itm.name}</Label>
-                    <Description>{itm.description.slice(0,18)}...</Description>
+                    <Description>{itm.description.slice(0, 18)}...</Description>
                   </div>
                   <ListBox.ItemIndicator />
                 </ListBox.Item>
