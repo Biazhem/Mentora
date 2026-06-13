@@ -94,7 +94,7 @@ export default function OrganizationsPage() {
 
       <div className="mx-auto px-4 grid md:grid-cols-2 gap-6">
         {filteredOrganizations.map((org, idx) => (
-          <Link key={org.name} href={`/organizations/${idx + 1}`}>
+          <Link key={org.name} href={`/organization/${idx + 1}`}>
             <Card className="w-full items-stretch md:flex-row cursor-pointer">
               <div className="relative h-[140px] w-full shrink-0 overflow-hidden rounded-2xl sm:h-[120px] sm:w-[120px]">
                 <img

@@ -18,19 +18,13 @@ import {
   LogOut,
   Menu,
   Presentation,
+  Ticket
 } from "lucide-react";
 import { SignOutButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useOrgSelectorStore } from "@/stores/org-selector";
+import { navItems } from "@/config/data";
 
-const navItems = [
-  { icon: LayoutDashboard, title: "Dashboard", url: "/dashboard" },
-  { icon: Briefcase, title: "Jobs", url: "/job" },
-  { icon: Building2, title: "Organizations", url: "/organization" },
-  { icon: CheckCheck, title: "Tasks", url: "/tasks" },
-  { icon: GraduationCap, title: "Mentors", url: "/mentors" },
-  { icon: Presentation, title: "Meetings", url: "/discussion/meetings" },
-];
 
 export function NavigationSidebarSmall() {
   const organizations = useOrgSelectorStore((state) => state.organizations);
@@ -97,7 +91,7 @@ export function NavigationSidebarSmall() {
                     <Link key={item.url} href={item.url}>
                       <Button
                         slot="close"
-                        variant="ghost"
+                        variant="outline"
                         className="w-full justify-start"
                       >
                         <Icon className="size-4" />
@@ -110,7 +104,7 @@ export function NavigationSidebarSmall() {
             </Drawer.Body>
             <Drawer.Footer>
               <SignOutButton redirectUrl="/">
-                <Button slot="close" variant="danger" className="w-full justify-start">
+                <Button slot="close" variant="danger-soft" className="w-full justify-start">
                   <LogOut className="size-4" />
                   Logout
                 </Button>

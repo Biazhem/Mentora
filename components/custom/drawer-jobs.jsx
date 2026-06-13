@@ -1,32 +1,39 @@
 "use client";
 
+import { Chip } from "@heroui/react";
 import { Button, Card, Drawer } from "@heroui/react";
 
-export function JobDrawer({ job }) {
+export function JobDrawer({ job, showImage = true, showDesc = false }) {
   return (
     <Drawer>
       <Drawer.Trigger className="text-left">
         <Card className="w-full items-stretch transition hover:shadow-lg md:flex-row">
-          <div className="relative h-[120px] w-full shrink-0 overflow-hidden rounded-xl md:w-[120px]">
-            <img
-              src={job.image}
-              alt={job.company}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          </div>
+          {showImage && (
+            <div className="relative h-[120px] w-full shrink-0 overflow-hidden rounded-xl md:w-[120px]">
+              <img
+                src={job.image}
+                alt={job.company}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            </div>
+          )}
 
-          <div className="flex flex-1 flex-col p-4">
+          <div className="flex flex-1 flex-col">
             <Card.Header className="mb-1 p-0">
               <Card.Title className="text-lg">{job.title}</Card.Title>
               <Card.Description>
-                {job.company}, {job.location}
+                Islamabad
               </Card.Description>
             </Card.Header>
 
-            <p className="mb-3 text-left text-sm text-foreground line-clamp-1">{job.description}</p>
+            <p className="mb-3 text-left text-sm text-foreground line-clamp-1">
+              {job.description}
+            </p>
 
             <Card.Footer className="mt-auto p-0">
-              <span className="rounded-full bg-secondary px-3 py-1 text-xs">{job.type}</span>
+              <Chip variant="primary" color="accent">
+                {job.type}
+              </Chip>
             </Card.Footer>
           </div>
         </Card>
@@ -39,9 +46,15 @@ export function JobDrawer({ job }) {
               <Drawer.Heading>{job.title}</Drawer.Heading>
             </Drawer.Header>
             <Drawer.Body className="space-y-4">
-              <div className="overflow-hidden rounded-lg">
-                <img src={job.image} alt={job.company} className="h-40 w-full object-cover" />
-              </div>
+              {showImage && (
+                <div className="overflow-hidden rounded-lg">
+                  <img
+                    src={job.image}
+                    alt={job.company}
+                    className="h-40 w-full object-cover"
+                  />
+                </div>
+              )}
               <div>
                 <p className="text-sm text-foreground">Organization</p>
                 <p className="font-medium">{job.company}</p>

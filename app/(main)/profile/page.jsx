@@ -10,8 +10,6 @@ import {
 import { Avatar, AvatarFallback , AvatarImage} from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
-
 import {
   Mail,
   Phone,
@@ -20,9 +18,7 @@ import {
   Briefcase,
   Edit,
 } from "lucide-react";
-import { Calendar } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
-import { EmailAddress } from "@clerk/nextjs/server";
 
 export default function Page() {
   const { user, isLoaded } = useUser();

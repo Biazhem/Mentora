@@ -19,6 +19,7 @@ import { Briefcase } from "lucide-react";
 import { Presentation } from "lucide-react";
 import { SignOutButton, useUser } from "@clerk/nextjs";
 import MainHeader from "./main-header";
+import { navItems } from "@/config/data";
 
 export function MinimaDashboard({ children }) {
   const { user, isLoaded } = useUser();
@@ -30,14 +31,6 @@ export function MinimaDashboard({ children }) {
   const imageUrl = user?.imageUrl;
   const emailAddress = user?.primaryEmailAddress?.emailAddress ?? "";
   const fallbackInitials = `${firstName.charAt(0)}${lastName.charAt(0)}`.trim() || "U";
-  const icons = [
-    { icon: LayoutDashboard, title: "Dashboard", url: "/dashboard" },
-    { icon: Briefcase , title: "Jobs", url: "/job" },
-    { icon: Building2, title: "Organizations", url: "/organization" },
-    { icon: CheckCheck, title: "Tasks", url: "/tasks" },
-    { icon: GraduationCap , title: "Mentors", url: "/mentors" },
-    { icon: Presentation , title: "Meetings", url: "/discussion/meetings" },
-  ];
 
   return (
     <div className="w-full min-h-screen flex bg-background-secondary dark:bg-background-inverse/2">
@@ -45,7 +38,7 @@ export function MinimaDashboard({ children }) {
         
 
         <nav className="flex flex-col gap-6 w-full">
-          {icons.map((Icon, i) => (
+          {navItems.map((Icon, i) => (
             <Tooltip delay={0} key={i}>
               <Tooltip.Trigger>
                 <Link href={Icon.url}>

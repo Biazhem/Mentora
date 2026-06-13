@@ -1,18 +1,17 @@
 import { data } from "@/config/data";
 import { use } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import Link from "next/link"
-import { Separator } from "@/components/ui/separator";
+import { Separator } from "@heroui/react";
+import { JobDrawer } from "@/components/custom/drawer-jobs";
 
 export default function OrganizationProfile({ params }) {
   const { slug } = use(params);
 
-  // Transform mock data to find matching organization
-  const NormalizeOrg = data.organizations.filter((item)=> item.id === Number(slug)); // [{}]
-  const organization = NormalizeOrg[0]; // {...}
+  const NormalizeOrg = data.organizations.filter(
+    (item) => item.id === Number(slug),
+  ); // [{}]
+  const organization = NormalizeOrg[0];
 
-  const jobs = data.jobs.filter((item) => (item.org_index === Number(slug)));
-
+  const jobs = data.jobs.filter((item) => item.org_index === Number(slug));
 
   if (!organization) {
     return <p className="p-6">Organization not found</p>;
@@ -28,51 +27,34 @@ export default function OrganizationProfile({ params }) {
             className="w-full h-full object-cover"
           />
         </div>
-        <div>
+        <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-semibold">{organization.name}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Category: {organization.category}
           </p>
           <a href={organization.website} className="text-blue-500">
-            {organization.website.replaceAll("https://", "")}
+            {organization.website}
           </a>
-          <br />
           <a href={"#"} className="text-orange-500">
             {organization.location}
           </a>
         </div>
       </div>
-      <p className="mt-4 text-muted-foreground">{organization.description}</p>
 
-      <Separator />
+      <Separator className="my-2" />
+
+      <div className="space-y-1 min-h-32">
+        <h1 className="text-2xl font-bold">About</h1>
+        <p>
+          {organization.description}
+        </p>
+      </div>
 
       <div className="space-y-1">
         <h1 className="text-2xl font-bold">Jobs</h1>
-        <div className="grid gap-6 md:grid-cols-2">
-          {jobs.map((job,idx) => (
-            <Link key={job.id} href={`/jobs/details?det=${idx+1}`}>
-              <Card className="hover:shadow-sm transition w-full flex flex-col">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">{job.title}</CardTitle>
-                  <CardDescription className="text-sm">
-                    <Link href={`/organizations/${job.companySlug}`}>
-                      {job.company}
-                    </Link>
-                    , {job.location}
-                  </CardDescription>
-                </CardHeader>
-
-                <CardContent className="pt-0">
-                  <p className="text-sm text-muted-foreground mb-4 max-w-3xl">
-                    {job.description}
-                  </p>
-
-                  <span className="inline-flex text-xs font-medium px-3 py-1 rounded-full bg-secondary">
-                    {job.type}
-                  </span>
-                </CardContent>
-              </Card>
-            </Link>
+        <div className="grid gap-6 md:grid-cols-3">
+          {jobs.map((job, idx) => (
+            <JobDrawer key={idx} job={job} showImage={false} />
           ))}
         </div>
       </div>

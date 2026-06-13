@@ -39,24 +39,32 @@ export async function POST(req) {
 
     try {
       const prompt = `
-Extract resume into STRICT JSON ONLY.
+You are a strict data extraction bot. Extract the resume into this EXACT JSON structure. 
 
 Rules:
-- return valid JSON only
-- no explanation
+1. ONLY output valid JSON. No markdown formatting, no explanations.
+2. You MUST include every single key listed below.
+3. If you cannot find the information for a field, you MUST return an empty string "". 
+4. program = field of study (e.g., Computer Science, Business).
+5. degree = highest qualification.
 
-Keys:
-firstName, lastName, email, phone, program, degree,
-dateOfBirth, address, bio, skills, experiences, languages
+Structure to fill out:
+{
+  "firstName": "",
+  "lastName": "",
+  "email": "",
+  "phone": "",
+  "program": "",
+  "degree": "",
+  "dateOfBirth": "",
+  "address": "",
+  "bio": "",
+  "skills": [],
+  "experiences": [],
+  "languages": []
+}
 
-Important:
-- Bio is very Important
-- program = field of study
-- degree = highest qualification
-- first Name and Last Name
-- if missing use ""
-
-Resume:
+Resume Text:
 ${text}
 `;
 
@@ -67,7 +75,8 @@ ${text}
           'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY || ''}`
         },
         body: JSON.stringify({
-          model: process.env.DEEPSEEK_MODEL || process.env.GEMINI_MODEL || 'gpt-4o-mini',
+          model: process.env.DEEPSEEK_MODEL || 'gpt-4o-mini',
+          response_format: { type: 'json_object' }, // <-- ADD THIS LINE
           prompt: prompt,
           max_tokens: 1500
         })
@@ -88,7 +97,20 @@ ${text}
       const match = (genText || '').match(/\{[\s\S]*\}/);
 
       if (match) {
-        geminiParsed = JSON.parse(match[0]);
+        const rawAiData = JSON.parse(match[0]);
+        
+        // The ultimate safety net: force the AI data into this exact shape
+        const defaultSchema = {
+          firstName: "", lastName: "", email: "", phone: "",
+          program: "", degree: "", dateOfBirth: "", address: "",
+          bio: "", skills: [], experiences: [], languages: []
+        };
+
+        // This guarantees all keys exist, even if rawAiData missed them
+        geminiParsed = {
+          ...defaultSchema,
+          ...rawAiData
+        };
       }
 
     } catch (e) {
@@ -112,8 +134,9 @@ ${text}
       firstName = parts[0] || '';
       lastName = parts.slice(1).join(' ') || '';
     }
-
-    const programMatch = text.match(/(computer science|software engineering|information technology|data science|business administration)/i);
+    
+    // Expanded program fallback to catch more variations and keywords
+    const programMatch = text.match(/(computer science|software|information technology|data|business|engineering|finance|accounting|marketing|economics|mathematics|physics|chemistry|biology|psychology|nursing|design|arts|history|law)/i);
     const degreeMatch = text.match(/\b(BSc|BS|MSc|MS|PhD|Bachelor|Master|Associate)\b/i);
 
     const skillsList = [

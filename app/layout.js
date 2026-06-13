@@ -1,7 +1,6 @@
 import "./globals.css";
 import { ThemeProvider as NextThemeProvider } from "next-themes";
 import { ClerkProvider } from "@clerk/nextjs";
-import CoreUI from "@/components/custom/dashboard";
 
 export const metadata = {
   title: "Create Next App",

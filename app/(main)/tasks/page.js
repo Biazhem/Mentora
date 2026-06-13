@@ -1,15 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import {
-  AvatarFallback,
-  AvatarGroup,
-  AvatarImage,
-  Avatar,
-} from "@/components/ui/avatar";
 import { Label, ListBox, Select } from "@heroui/react";
 import { X } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { Separator } from "@heroui/react";
 import { tasks } from "@/config/data";
 import { Search, SlidersHorizontal, Trash } from "lucide-react";
 
@@ -212,7 +206,7 @@ export default function TasksPage() {
             <Card.Footer className="flex flex-col items-start gap-2">
               <span>Assignees</span>
 
-              <AvatarGroup>
+              {/* <AvatarGroup>
                 <Avatar size="sm">
                   <AvatarImage
                     src="https://github.com/shadcn.png"
@@ -236,7 +230,7 @@ export default function TasksPage() {
                   />
                   <AvatarFallback>ER</AvatarFallback>
                 </Avatar>
-              </AvatarGroup>
+              </AvatarGroup> */}
             </Card.Footer>
           </Card>
         ))}

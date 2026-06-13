@@ -1,4 +1,22 @@
+import { Building2 } from "lucide-react";
+import { GraduationCap } from "lucide-react";
+import { Ticket } from "lucide-react";
+import { Presentation } from "lucide-react";
+import { CheckCheck } from "lucide-react";
+import { Briefcase } from "lucide-react";
+import { LayoutDashboard } from "lucide-react";
+
 export const USER_ROLE = "mentors"; // "student" | "organization" | "mentors"
+
+export const navItems = [
+  { icon: LayoutDashboard, title: "Dashboard", url: "/dashboard" },
+  { icon: Briefcase, title: "Jobs", url: "/job" },
+  { icon: Building2, title: "Organizations", url: "/organization" },
+  { icon: CheckCheck, title: "Tasks", url: "/tasks" },
+  { icon: GraduationCap, title: "Mentors", url: "/mentors" },
+  { icon: Presentation, title: "Meetings", url: "/discussion/meetings" },
+  { icon: Ticket, title: "Events", url: "/events" },
+]
 
 export const data = {
   organizations: [
@@ -89,6 +107,7 @@ export const data = {
       title: "React Webinar",
       description: "Learn React basics",
       type: "Webinar",
+      content: "This intensive, project-driven boot camp transforms tech enthusiasts into production-ready AI Engineers. You will master foundational machine learning, design advanced deep learning networks, and build cutting-edge Generative AI applications.By blending rigorous theoretical frameworks with hands-on development, you will learn to train, optimize, and deploy intelligent systems that solve complex, real-world problems.",
       location: "Islamabad",
       start_date: "2026-04-20 10:00:00",
       end_date: "2026-04-20 12:00:00",
@@ -98,6 +117,7 @@ export const data = {
       title: "AI Bootcamp",
       description: "Intro to AI",
       type: "Bootcamp",
+      constent: "",
       location: "Lahore",
       start_date: "2026-05-01 09:00:00",
       end_date: "2026-05-03 17:00:00",
@@ -106,6 +126,7 @@ export const data = {
       org_index: 2,
       title: "Hackathon 2026",
       description: "Build cool projects",
+      constent: "",
       type: "Hackathon",
       location: "Karachi",
       start_date: "2026-06-10 08:00:00",
@@ -115,6 +136,7 @@ export const data = {
       org_index: 3,
       title: "Startup Meetup",
       description: "Networking event",
+      constent: "",
       type: "Meetup",
       location: "Islamabad",
       start_date: "2026-04-25 18:00:00",
