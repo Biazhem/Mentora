@@ -4,7 +4,6 @@ import React from "react";
 import { Briefcase, FileText, MoreHorizontal, TrendingUp, Users } from "lucide-react";
 import { data } from "@/config/data";
 import { Button, Card, Chip, Label, ProgressBar, Separator, Surface } from "@heroui/react";
-import { ChartBarDefault } from "@/components/custom/graphs/bar-chart";
 
 const chartConfig = {
   count: {
@@ -68,7 +67,7 @@ export default function OrgDashboard() {
             <Card.Description>Monthly applicant volume and hiring funnel movement.</Card.Description>
           </Card.Header>
           <Card.Content className="space-y-4">
-            <ChartBarDefault data={applicationData} config={chartConfig} title="" description="" />
+            {/* Chart */}
             <ProgressBar aria-label="Quarterly target" color="accent" value={84}>
               <Label>Quarterly Hiring Target</Label>
               <ProgressBar.Output />

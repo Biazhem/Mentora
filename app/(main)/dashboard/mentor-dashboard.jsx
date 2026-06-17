@@ -3,7 +3,6 @@
 import React from "react";
 import { Calendar, Users, Video } from "lucide-react";
 import { Button, Card, Chip, Label, ProgressBar, Separator, Surface } from "@heroui/react";
-import { ChartBarDefault } from "@/components/custom/graphs/bar-chart";
 
 const chartConfig = {
   count: {
@@ -81,12 +80,7 @@ export default function MentorDashboard() {
             <Card.Description>Monthly student intake and team growth.</Card.Description>
           </Card.Header>
           <Card.Content>
-            <ChartBarDefault
-              data={joinedTrendData}
-              config={chartConfig}
-              title=""
-              description=""
-            />
+            {/* Chart */}
           </Card.Content>
         </Card>
 

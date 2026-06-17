@@ -1,15 +1,5 @@
 "use client";
-
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Avatar, AvatarFallback , AvatarImage} from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button, Chip, Card } from "@heroui/react";
 import {
   Mail,
   Phone,
@@ -19,6 +9,7 @@ import {
   Edit,
 } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
+import { Avatar } from "@heroui/react";
 
 export default function Page() {
   const { user, isLoaded } = useUser();
@@ -48,19 +39,19 @@ export default function Page() {
       <Card>
         <CardContent className="flex flex-col items-center text-center p-6">
           <Avatar className="h-44 w-44 mb-4 rounded-lg">
-            <AvatarImage
+            <Avatar.Image
               src={userData.imageUrl}
               alt={userData.fullName ?? "User"}
               className="rounded-full"
             />
-            <AvatarFallback className="rounded-lg">
+            <Avatar.Fallback className="rounded-lg">
               {userData.firstName?.charAt(0)}
-            </AvatarFallback>
+            </Avatar.Fallback>
           </Avatar>
 
           <h2 className="text-xl font-semibold">{userData.name}</h2>
 
-          <Badge className="mt-2">{userData.role}</Badge>
+          <Chip className="mt-2">{userData.role}</Chip>
 
           <Button className="mt-4 w-full">
             <Edit className="mr-2 h-4 w-4" />
@@ -120,27 +111,27 @@ export default function Page() {
         {/* SKILLS */}
 
         <Card>
-          <CardHeader>
-            <CardTitle>Skills</CardTitle>
-          </CardHeader>
+          <Card.Header>
+            <Card.Title>Skills</Card.Title>
+          </Card.Header>
 
-          <CardContent className="flex flex-wrap gap-2">
+          <Card.Content className="flex flex-wrap gap-2">
             {userData.skills.map((skill, i) => (
-              <Badge key={i} variant="secondary">
+              <Chip key={i} variant="secondary">
                 {skill}
-              </Badge>
+              </Chip>
             ))}
-          </CardContent>
+          </Card.Content>
         </Card>
 
         {/* EXPERIENCE */}
 
         <Card>
-          <CardHeader>
-            <CardTitle>Experience</CardTitle>
-          </CardHeader>
+          <Card.Header>
+            <Card.Title>Experience</Card.Title>
+          </Card.Header>
 
-          <CardContent className="flex gap-3">
+          <Card.Content className="flex gap-3">
             <Briefcase className="h-5 w-5 text-muted-foreground" />
 
             <div>
@@ -154,7 +145,7 @@ export default function Page() {
                 optimized performance of web pages.
               </p>
             </div>
-          </CardContent>
+          </Card.Content>
         </Card>
       </div>
     </div>

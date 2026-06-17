@@ -6,7 +6,7 @@ import { CheckCheck } from "lucide-react";
 import { Briefcase } from "lucide-react";
 import { LayoutDashboard } from "lucide-react";
 
-export const USER_ROLE = "mentors"; // "student" | "organization" | "mentors"
+export const USER_ROLE = "organization"; // "student" | "organization" | "mentors"
 
 export const navItems = [
   { icon: LayoutDashboard, title: "Dashboard", url: "/dashboard" },
@@ -107,7 +107,7 @@ export const data = {
       title: "React Webinar",
       description: "Learn React basics",
       type: "Webinar",
-      content: "This intensive, project-driven boot camp transforms tech enthusiasts into production-ready AI Engineers. You will master foundational machine learning, design advanced deep learning networks, and build cutting-edge Generative AI applications.By blending rigorous theoretical frameworks with hands-on development, you will learn to train, optimize, and deploy intelligent systems that solve complex, real-world problems.",
+      content: "# Hello \n This intensive,  project-driven boot camp transforms tech enthusiasts into production-ready AI Engineers. You will master foundational machine learning, design advanced deep learning networks, and build cutting-edge Generative AI applications.By blending rigorous theoretical frameworks with hands-on development, you will learn to train, optimize, and deploy intelligent systems that solve complex, real-world problems.",
       location: "Islamabad",
       start_date: "2026-04-20 10:00:00",
       end_date: "2026-04-20 12:00:00",

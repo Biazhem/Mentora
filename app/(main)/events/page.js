@@ -21,6 +21,7 @@ import {
 } from "@heroui/react";
 import { Surface } from "@heroui/react";
 import { FacebookLogoIcon, GlobeIcon, InstagramLogoIcon, TwitterLogoIcon } from "@phosphor-icons/react";
+import { MarkdownRenderer } from "@/components/custom/MarkdownRenderer";
 
 export default function EventsPage() {
   const [search, setSearch] = useState("");
@@ -203,7 +204,7 @@ export default function EventsPage() {
                     <Separator className="my-3" />
                     <div className="flex gap-2 w-full">
                       <div className="w-full">
-                        <p>{event.content}</p>
+                        <MarkdownRenderer content={event.content} />
                       </div>
                       <div className="w-lg space-y-2">
                         <Surface
@@ -223,20 +224,6 @@ export default function EventsPage() {
                             <Avatar variant="soft" color="accent">
                               <Avatar.Fallback>IC</Avatar.Fallback>
                             </Avatar>
-                          </div>
-                        </Surface>
-                        <Surface
-                          className="flex min-w-[320px] flex-col gap-0 rounded-3xl p-3"
-                          variant="secondary"
-                        >
-                          <h3 className="text-base font-semibold text-foreground">
-                            Career Support
-                          </h3>
-                          <div className="flex gap-2 items-center">
-                            <p className="text-sm">
-                              Resume reviews, LinkedIn optimization, and mock
-                              technical interviews.
-                            </p>
                           </div>
                         </Surface>
                         <Surface

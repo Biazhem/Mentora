@@ -14,16 +14,7 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Header } from "@/components/header";
+import { Card, Button, Header, Chip } from "@heroui/react";
 
 export default function HomePage() {
   const features = [
@@ -68,9 +59,9 @@ export default function HomePage() {
         {/* Hero Section */}
         <section className="relative overflow-hidden rounded-3xl bg-primary/5 p-8 md:p-16">
           <div className="relative z-10 max-w-3xl">
-            <Badge variant="secondary" className="mb-4">
+            <Chip variant="secondary" className="mb-4">
               New: Mentorship Program 2026
-            </Badge>
+            </Chip>
             <h1 className="mb-6 text-4xl font-extrabold tracking-tight md:text-6xl">
               Bridge the Gap Between{" "}
               <span className="text-primary">Learning</span> and{" "}
@@ -81,16 +72,16 @@ export default function HomePage() {
               organizations to collaborate, grow, and succeed together.
             </p>
             <div className="flex flex-wrap gap-4">
-              <Button size="lg" asChild>
                 <Link href="/sign-up">
+              <Button size="lg" asChild>
                   Get Started <Rocket className="ml-2 h-5 w-5" />
-                </Link>
               </Button>
-              <Button size="lg" variant="outline" asChild>
+                </Link>
                 <Link href="/jobs">
+              <Button size="lg" variant="outline" asChild>
                   Explore Jobs <Search className="ml-2 h-5 w-5" />
-                </Link>
               </Button>
+                </Link>
             </div>
           </div>
 
@@ -113,32 +104,28 @@ export default function HomePage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {features.map((feature, index) => (
               <Card key={index} className="transition-all hover:shadow-lg">
-                <CardHeader>
+                <Card.Header>
                   <div className="mb-4">{feature.icon}</div>
-                  <CardTitle>{feature.title}</CardTitle>
+                  <Card.Title>{feature.title}</Card.Title>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {feature.tags.map((tag) => (
-                      <Badge
-                        key={tag}
-                        variant="outline"
-                        className="text-[10px]"
-                      >
+                      <Chip key={tag} variant="outline" className="text-[10px]">
                         {tag}
-                      </Badge>
+                      </Chip>
                     ))}
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="mb-6 text-sm leading-relaxed">
+                </Card.Header>
+                <Card.Content>
+                  <Card.Description className="mb-6 text-sm leading-relaxed">
                     {feature.description}
-                  </CardDescription>
-                  <Button variant="ghost" size="sm" className="group" asChild>
-                    <Link href={feature.link}>
-                      Explore{" "}
+                  </Card.Description>
+                  <Link href={feature.link}>
+                    <Button variant="ghost" size="sm" className="group" asChild>
                       <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                    </Link>
-                  </Button>
-                </CardContent>
+                      Explore
+                    </Button>
+                  </Link>
+                </Card.Content>
               </Card>
             ))}
           </div>
@@ -189,9 +176,11 @@ export default function HomePage() {
             opportunities, and manage your tasks like a pro.
           </p>
           <div className="flex justify-center gap-4">
-            <Button size="lg" variant="secondary" asChild>
-              <Link href="/sign-up">Create Free Account</Link>
-            </Button>
+            <Link href="/sign-up">
+              <Button size="lg" variant="secondary" asChild>
+                Create Free Account
+              </Button>
+            </Link>
           </div>
         </section>
       </main>
