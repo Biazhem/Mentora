@@ -11,8 +11,7 @@ import {
   Typography,
 } from "@heroui/react";
 
-// STEP 1: Personal Info & Identity
-function StudentGeneralForm() {
+function StudentGeneralForm({ formData, updateField }) {
   return (
     <div className="space-y-2">
       <div>
@@ -20,18 +19,21 @@ function StudentGeneralForm() {
         <Description>Set up your basic profile details</Description>
       </div>
       <div className="flex w-80 flex-col gap-4">
-        {/* Student Profile Picture Placeholder */}
         <div className="flex flex-col items-center justify-center w-30 h-30 bg-accent-soft-hover rounded-xl border border-dashed border-muted/40 cursor-pointer hover:bg-accent-soft transition-colors mx-auto lg:mx-0">
           <span className="text-xs text-muted font-medium">Upload Avatar</span>
         </div>
 
-        {/* Name */}
         <TextField>
           <Label htmlFor="student-name">Full Name</Label>
-          <Input id="student-name" placeholder="Zain Malik" fullWidth />
+          <Input
+            id="student-name"
+            placeholder="Zain Malik"
+            fullWidth
+            value={formData.name}
+            onChange={(e) => updateField("name", e.target.value)}
+          />
         </TextField>
 
-        {/* Contact Info */}
         <TextField>
           <Label htmlFor="student-email">Contact Email</Label>
           <Input
@@ -39,6 +41,8 @@ function StudentGeneralForm() {
             type="email"
             placeholder="zain@university.edu"
             fullWidth
+            value={formData.email}
+            onChange={(e) => updateField("email", e.target.value)}
           />
         </TextField>
 
@@ -49,6 +53,8 @@ function StudentGeneralForm() {
             type="tel"
             placeholder="+92 300 1234567"
             fullWidth
+            value={formData.phone}
+            onChange={(e) => updateField("phone", e.target.value)}
           />
         </TextField>
       </div>
@@ -56,8 +62,7 @@ function StudentGeneralForm() {
   );
 }
 
-// STEP 2: Academic Details & CV
-function StudentAcademicForm() {
+function StudentAcademicForm({ formData, updateField }) {
   return (
     <div className="space-y-2">
       <div>
@@ -65,17 +70,17 @@ function StudentAcademicForm() {
         <Description>Tell us where and what you are studying</Description>
       </div>
       <div className="flex w-80 flex-col gap-4">
-        {/* University Name */}
         <TextField>
           <Label htmlFor="student-uni">University / Institute</Label>
           <Input
             id="student-uni"
             placeholder="Fast NUCES, Islamabad"
             fullWidth
+            value={formData.university}
+            onChange={(e) => updateField("university", e.target.value)}
           />
         </TextField>
 
-        {/* Semester */}
         <TextField>
           <Label htmlFor="student-semester">Current Semester</Label>
           <Input
@@ -85,6 +90,8 @@ function StudentAcademicForm() {
             max="12"
             placeholder="e.g., 6"
             fullWidth
+            value={formData.semester}
+            onChange={(e) => updateField("semester", e.target.value)}
           />
         </TextField>
       </div>
@@ -92,8 +99,7 @@ function StudentAcademicForm() {
   );
 }
 
-// STEP 3: Expertise & Learning Goals
-function StudentExpertiseForm() {
+function StudentExpertiseForm({ formData, updateField }) {
   return (
     <div className="space-y-2">
       <div>
@@ -101,27 +107,28 @@ function StudentExpertiseForm() {
         <Description>Highlight your skillset and focus domains</Description>
       </div>
       <div className="flex w-80 flex-col gap-4">
-        {/* Area of Expertise / Domain */}
         <TextField>
           <Label htmlFor="student-expertise">Area of Expertise / Focus</Label>
           <Input
             id="student-expertise"
             placeholder="e.g., Frontend Development, UI/UX"
             fullWidth
+            value={formData.expertise}
+            onChange={(e) => updateField("expertise", e.target.value)}
           />
         </TextField>
-        
 
-        {/* Core Skills Summary */}
         <TextField>
-          <Label htmlFor="student-bio">Skills</Label>
+          <Label htmlFor="student-skills">Skills</Label>
           <Input
-            id="student-expertise"
-            placeholder="e.g., Frontend Development, UI/UX"
+            id="student-skills"
+            placeholder="e.g., JavaScript, React, Tailwind"
             fullWidth
+            value={formData.skills}
+            onChange={(e) => updateField("skills", e.target.value)}
           />
         </TextField>
-        {/* CV / Resume Upload Box */}
+
         <TextField>
           <Label htmlFor="student-cv">Upload CV / Resume</Label>
           <div className="relative flex flex-col items-center justify-center p-4 border border-dashed border-muted/40 rounded-xl bg-background-secondary hover:bg-accent-soft transition-colors cursor-pointer group">
@@ -144,27 +151,37 @@ function StudentExpertiseForm() {
 
 export default function StudentOnboardingPage() {
   const [activeForm, setActiveForm] = useState(1);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    university: "",
+    semester: "",
+    expertise: "",
+    skills: "",
+  });
   const totalSteps = 3;
+
+  const updateField = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleNext = () => {
     if (activeForm < totalSteps) {
       setActiveForm((prev) => prev + 1);
     } else {
-      console.log("Student Profile Setup Finalized!");
+      console.log("Student Profile Data:", formData);
     }
   };
 
   return (
     <div className="grid min-h-svh w-full grid-cols-1 lg:grid-cols-2 bg-accent-soft">
-      {/* Left Side: Dynamic Student Form Wizard */}
       <div className="flex flex-col items-center justify-center p-6 my-8">
         <div className="flex w-80 flex-col gap-6">
-          {/* Conditional Multi-step rendering */}
-          {activeForm === 1 && <StudentGeneralForm />}
-          {activeForm === 2 && <StudentAcademicForm />}
-          {activeForm === 3 && <StudentExpertiseForm />}
+          {activeForm === 1 && <StudentGeneralForm formData={formData} updateField={updateField} />}
+          {activeForm === 2 && <StudentAcademicForm formData={formData} updateField={updateField} />}
+          {activeForm === 3 && <StudentExpertiseForm formData={formData} updateField={updateField} />}
 
-          {/* Wizard Controls */}
           <div className="flex gap-2 items-center w-full mt-2">
             {activeForm > 1 && (
               <Button
@@ -183,7 +200,6 @@ export default function StudentOnboardingPage() {
         </div>
       </div>
 
-      {/* Right Side: Image Cover Panel */}
       <div className="relative hidden h-full w-full lg:block bg-background-secondary">
         <img
           src="https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/docs/neo2.jpeg"
