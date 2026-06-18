@@ -22,13 +22,21 @@ function GeneralForm({ formData, updateField }) {
         <Description>Tell us about your company's general info</Description>
       </div>
       <div className="flex w-80 flex-col gap-4">
-        <div className="relative flex flex-col items-center justify-center w-30 h-30 bg-accent-soft-hover rounded-lg border border-dashed border-muted/40 cursor-pointer hover:bg-accent-soft transition-colors group">
+        <div className="relative flex flex-col items-center justify-center w-30 h-30 bg-accent-soft-hover rounded-lg border border-dashed border-muted/40 cursor-pointer hover:bg-accent-soft transition-colors group overflow-hidden">
           <input
             type="file"
             accept=".jpg,.jpeg,.png"
-            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) updateField("orgLogo", URL.createObjectURL(file));
+            }}
           />
-          <span className="text-xs text-muted font-medium group-hover:text-primary transition-colors">Upload Logo</span>
+          {formData.orgLogo ? (
+            <img src={formData.orgLogo} alt="Logo preview" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-xs text-muted font-medium group-hover:text-primary transition-colors">Upload Logo</span>
+          )}
         </div>
 
         <TextField>
@@ -198,13 +206,21 @@ function FounderForm({ formData, updateField }) {
         <Description>Tell us about your company's founder</Description>
       </div>
       <div className="flex w-80 flex-col gap-4">
-        <div className="relative flex flex-col items-center justify-center w-30 h-30 bg-accent-soft-hover rounded-lg border border-dashed border-muted/40 cursor-pointer hover:bg-accent-soft transition-colors group">
+        <div className="relative flex flex-col items-center justify-center w-30 h-30 bg-accent-soft-hover rounded-lg border border-dashed border-muted/40 cursor-pointer hover:bg-accent-soft transition-colors group overflow-hidden">
           <input
             type="file"
             accept=".jpg,.jpeg,.png"
-            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) updateField("founderPhoto", URL.createObjectURL(file));
+            }}
           />
-          <span className="text-xs text-muted font-medium group-hover:text-primary transition-colors">Upload Photo</span>
+          {formData.founderPhoto ? (
+            <img src={formData.founderPhoto} alt="Photo preview" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-xs text-muted font-medium group-hover:text-primary transition-colors">Upload Photo</span>
+          )}
         </div>
         <TextField>
           <Label htmlFor="input-ceo-name">Full Name</Label>
@@ -270,6 +286,7 @@ export default function Page() {
   const [activeForm, setActiveForm] = useState(1);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
+    orgLogo: "",
     orgName: "",
     description: "",
     orgEmail: "",
@@ -282,6 +299,7 @@ export default function Page() {
     city: "",
     postalCode: "",
     streetAddress: "",
+    founderPhoto: "",
     founderName: "",
     founderEmail: "",
     founderPhone: "",

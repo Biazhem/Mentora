@@ -20,16 +20,23 @@ import {
   Presentation,
   Ticket
 } from "lucide-react";
-import { SignOutButton } from "@clerk/nextjs";
+import { SignOutButton, useUser } from "@clerk/nextjs";
+import { useEffect } from "react";
 import Link from "next/link";
 import { useOrgSelectorStore } from "@/stores/org-selector";
 import { navItems } from "@/config/data";
 
 
 export function NavigationSidebarSmall() {
+  const { user } = useUser();
+  const fetchOrganizations = useOrgSelectorStore((state) => state.fetchOrganizations);
   const organizations = useOrgSelectorStore((state) => state.organizations);
   const selectedOrganizationId = useOrgSelectorStore((state) => state.selectedOrganizationId);
   const setSelectedOrganizationId = useOrgSelectorStore((state) => state.setSelectedOrganizationId);
+
+  useEffect(() => {
+    if (user) fetchOrganizations(user.id);
+  }, [user, fetchOrganizations]);
 
   return (
     <Drawer>
@@ -66,14 +73,13 @@ export function NavigationSidebarSmall() {
                   <Select.Popover>
                     <ListBox>
                       {organizations.map((itm) => (
-                        <ListBox.Item key={itm.id} id={String(itm.id)} textValue={itm.name}>
+                        <ListBox.Item key={itm.id} id={String(itm.id)} textValue={itm.org_name}>
                           <Avatar size="sm">
-                            <Avatar.Image alt={itm.name} src={itm.logo} className="object-cover" />
-                            <Avatar.Fallback>{itm.name[0].toUpperCase()}</Avatar.Fallback>
+                            <Avatar.Fallback>{itm.org_name?.[0]?.toUpperCase() || "O"}</Avatar.Fallback>
                           </Avatar>
                           <div className="flex flex-col">
-                            <Label>{itm.name}</Label>
-                            <Description>{itm.description.slice(0, 18)}...</Description>
+                            <Label>{itm.org_name}</Label>
+                            <Description>{itm.description?.slice(0, 18) || ""}...</Description>
                           </div>
                           <ListBox.ItemIndicator />
                         </ListBox.Item>

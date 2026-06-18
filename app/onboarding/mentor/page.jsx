@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
+import { supabase } from "@/lib/supabase";
 import {
   Input,
   Button,
@@ -181,7 +184,10 @@ function ExpertiseForm({ formData, updateField }) {
 }
 
 export default function Page() {
+  const { user, isLoaded } = useUser();
+  const router = useRouter();
   const [activeForm, setActiveForm] = useState(1);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     bio: "",
@@ -197,15 +203,63 @@ export default function Page() {
   });
   const totalSteps = 3;
 
+  useEffect(() => {
+    async function checkExisting() {
+      if (!isLoaded || !user) return;
+
+      const { data, error } = await supabase
+        .from("mentors")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .maybeSingle();
+
+      if (!error && data) {
+        router.push("/dashboard");
+      }
+    }
+
+    checkExisting();
+  }, [isLoaded, user, router]);
+
   const updateField = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.from("mentors").insert({
+        clerk_id: user.id,
+        name: formData.name,
+        bio: formData.bio,
+        email: formData.email,
+        phone: formData.phone,
+        gender: formData.gender,
+        dob: formData.dob,
+        field: formData.field,
+        expertise: formData.expertise,
+        experience: formData.experience,
+        institute: formData.institute,
+        inst_email: formData.instEmail,
+      });
+
+      if (error) throw error;
+
+      router.push("/dashboard");
+    } catch (err) {
+      console.error("Mentor insert error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleNext = () => {
     if (activeForm < totalSteps) {
       setActiveForm((prev) => prev + 1);
     } else {
-      console.log("Mentor Profile Data:", formData);
+      handleSubmit();
     }
   };
 
@@ -228,7 +282,7 @@ export default function Page() {
                 Back
               </Button>
             )}
-            <Button size="lg" fullWidth onClick={handleNext}>
+            <Button size="lg" fullWidth onClick={handleNext} isLoading={loading}>
               {activeForm === totalSteps ? "Complete" : "Next"}
             </Button>
           </div>

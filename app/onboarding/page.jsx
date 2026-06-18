@@ -2,7 +2,6 @@
 
 import { Card, Button, Avatar } from "@heroui/react";
 import Link from "next/link";
-import { Label } from "recharts";
 
 export default function Page() {
   return (

@@ -16,6 +16,8 @@ import { ThemeSwitch } from "../theme/theme-switcher";
 import { Settings } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useOrgSelectorStore } from "@/stores/org-selector";
+import { useUser } from "@clerk/nextjs";
+import { useEffect } from "react";
 import { NavigationSidebarSmall } from "./navigation-sidebar-sm";
 
 export default function MainHeader({
@@ -25,9 +27,15 @@ export default function MainHeader({
   isLoaded,
   emailAddress,
 }) {
+  const { user } = useUser();
+  const fetchOrganizations = useOrgSelectorStore((state) => state.fetchOrganizations);
   const organizations = useOrgSelectorStore((state) => state.organizations);
   const selectedOrganizationId = useOrgSelectorStore((state) => state.selectedOrganizationId);
   const setSelectedOrganizationId = useOrgSelectorStore((state) => state.setSelectedOrganizationId);
+
+  useEffect(() => {
+    if (user) fetchOrganizations(user.id);
+  }, [user, fetchOrganizations]);
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
   const breadcrumbs = segments.map((segment, index) => {
@@ -75,18 +83,13 @@ export default function MainHeader({
           <Select.Popover>
             <ListBox>
               {organizations.map((itm) => (
-                <ListBox.Item key={itm.id} id={String(itm.id)} textValue={itm.name}>
+                <ListBox.Item key={itm.id} id={String(itm.id)} textValue={itm.org_name}>
                   <Avatar size="sm">
-                    <Avatar.Image
-                      alt={itm.name}
-                      src={itm.logo}
-                      className="object-cover "
-                    />
-                    <Avatar.Fallback>{itm.name[0].toUpperCase()}</Avatar.Fallback>
+                    <Avatar.Fallback>{itm.org_name?.[0]?.toUpperCase() || "O"}</Avatar.Fallback>
                   </Avatar>
                   <div className="flex flex-col">
-                    <Label>{itm.name}</Label>
-                    <Description>{itm.description.slice(0, 18)}...</Description>
+                    <Label>{itm.org_name}</Label>
+                    <Description>{itm.description?.slice(0, 18) || ""}...</Description>
                   </div>
                   <ListBox.ItemIndicator />
                 </ListBox.Item>

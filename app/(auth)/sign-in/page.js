@@ -92,7 +92,7 @@ export default function Page() {
                     headerSubtitle: "hidden",
                   },
                 }}
-                forceRedirectUrl="/onboardings"
+                forceRedirectUrl="/callback"
                 routing="path"
                 path="/sign-in"
                 signUpUrl="/sign-up"
