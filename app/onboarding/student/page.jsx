@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
+import { supabase } from "@/lib/supabase";
 import {
   Input,
   Button,
@@ -150,7 +153,10 @@ function StudentExpertiseForm({ formData, updateField }) {
 }
 
 export default function StudentOnboardingPage() {
+  const { user, isLoaded } = useUser();
+  const router = useRouter();
   const [activeForm, setActiveForm] = useState(1);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -162,15 +168,59 @@ export default function StudentOnboardingPage() {
   });
   const totalSteps = 3;
 
+  useEffect(() => {
+    async function checkExisting() {
+      if (!isLoaded || !user) return;
+
+      const { data, error } = await supabase
+        .from("students")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .maybeSingle();
+
+      if (!error && data) {
+        router.push("/dashboard");
+      }
+    }
+
+    checkExisting();
+  }, [isLoaded, user, router]);
+
   const updateField = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.from("students").insert({
+        clerk_id: user.id,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        university: formData.university,
+        semester: formData.semester,
+        expertise: formData.expertise,
+        skills: formData.skills,
+      });
+
+      if (error) throw error;
+
+      router.push("/dashboard");
+    } catch (err) {
+      console.error("Student insert error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleNext = () => {
     if (activeForm < totalSteps) {
       setActiveForm((prev) => prev + 1);
     } else {
-      console.log("Student Profile Data:", formData);
+      handleSubmit();
     }
   };
 
@@ -193,7 +243,7 @@ export default function StudentOnboardingPage() {
                 Back
               </Button>
             )}
-            <Button size="lg" fullWidth onClick={handleNext}>
+            <Button size="lg" fullWidth onClick={handleNext} isLoading={loading}>
               {activeForm === totalSteps ? "Complete" : "Next"}
             </Button>
           </div>
