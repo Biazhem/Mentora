@@ -24,11 +24,11 @@ export function MentorDrawer({ mentor }) {
             <div className="mb-4">
               <p className="mb-2 text-sm font-medium text-foreground">Expertise</p>
               <div className="flex flex-wrap gap-2">
-                {mentor.expertise.map((skill, idx) => (
+                {/* {mentor.expertise.map((skill, idx) => (
                   <Chip key={idx} size="sm" variant="secondary">
                     {skill}
                   </Chip>
-                ))}
+                ))} */}
               </div>
             </div>
           </Card.Content>
@@ -56,23 +56,10 @@ export function MentorDrawer({ mentor }) {
               <div>
                 <p className="mb-2 text-sm text-foreground">Expertise</p>
                 <div className="flex flex-wrap gap-2">
-                  {mentor.expertise.map((skill, idx) => (
+                  {(mentor.expertise || []).map((skill, idx) => (
                     <Chip key={idx} size="sm" variant="secondary">
                       {skill}
                     </Chip>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p className="mb-2 text-sm text-foreground">Experience</p>
-                <div className="space-y-2">
-                  {mentor.experience.map((item, idx) => (
-                    <div key={idx} className="rounded-md border p-3">
-                      <p className="font-medium">{item.title}</p>
-                      <p className="text-sm text-muted">{item.institute}</p>
-                      <p className="text-sm">{item.years} years</p>
-                    </div>
                   ))}
                 </div>
               </div>

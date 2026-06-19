@@ -3,44 +3,28 @@
 import { supabase } from "@/lib/supabase";
 import { Avatar, Button, Chip, Table } from "@heroui/react";
 import { use, useEffect, useState } from "react";
-import {
-  DotsThreeIcon,
-  PencilSimpleLineIcon,
-  TrashIcon,
-  UserIcon,
-} from "@phosphor-icons/react";
-import { RotateCcw } from "lucide-react";
-import { Pencil } from "lucide-react";
-import { UserPlus } from "lucide-react";
-import { data } from "@/config/data";
+import { PencilSimpleLineIcon, TrashIcon, UserIcon, DotsThreeIcon } from "@phosphor-icons/react";
+import { RotateCcw, Pencil, UserPlus, PenLine } from "lucide-react";
 import { JobDrawer } from "@/components/custom/drawer-jobs";
-import { Modal } from "@heroui/react";
-import { TextField } from "@heroui/react";
-import { Label } from "@heroui/react";
-import { Input } from "@heroui/react";
-
+import { Modal, TextField, Label, Input, TextArea, Description } from "@heroui/react";
+import { data } from "@/config/data";
 export default function OrganizationProfile({ params }) {
   const { slug } = use(params);
   const [organization, setOrganization] = useState(null);
   const [owner, setOwner] = useState(null);
-  // const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editForm, setEditForm] = useState({
+    org_name: "",
+    description: "",
+    street_address: "",
+    company_size: "",
+    company_type: "",
+  });
 
-  // Mock Data
-  const jobs = data.jobs.map((job, idx) => ({
-    id: idx + 1,
-    title: job.title,
-    company: data.organizations[job.org_index].name,
-    companySlug: data.organizations[job.org_index].name
-      .toLowerCase()
-      .replace(/\s+/g, "-"),
-    location: "Remote",
-    type: job.type[0],
-    timing: job.timing[0],
-    description: job.description,
-    image: data.organizations[job.org_index].logo,
-  }));
-  // mock data
+  const updateEditField = (field, value) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -59,6 +43,13 @@ export default function OrganizationProfile({ params }) {
         }
 
         setOrganization(orgData);
+        setEditForm({
+          org_name: orgData.org_name || "",
+          description: orgData.description || "",
+          street_address: orgData.street_address || "",
+          company_size: orgData.company_size || "",
+          company_type: orgData.company_type || "",
+        });
 
         const { data: userData } = await supabase
           .from("users")
@@ -70,15 +61,15 @@ export default function OrganizationProfile({ params }) {
           setOwner(userData);
         }
 
-        const { data: jobData } = await supabase
-          .from("jobs")
-          .select("*")
-          .eq("org_id", slug)
-          .order("created_at", { ascending: false });
+        // const { data: jobData } = await supabase
+        //   .from("jobs")
+        //   .select("*")
+        //   .eq("org_id", slug)
+        //   .order("created_at", { ascending: false });
 
-        if (jobData) {
-          setJobs(jobData);
-        }
+        // if (jobData) {
+        //   setJobs(jobData);
+        // }
       } catch (err) {
         console.error("Fetch error:", err);
       } finally {
@@ -88,6 +79,30 @@ export default function OrganizationProfile({ params }) {
 
     fetchData();
   }, [slug]);
+
+  const handleUpdate = async () => {
+    setEditLoading(true);
+    try {
+      const { error } = await supabase
+        .from("organizations")
+        .update({
+          org_name: editForm.org_name,
+          description: editForm.description,
+          street_address: editForm.street_address,
+          company_size: editForm.company_size,
+          company_type: editForm.company_type,
+        })
+        .eq("id", slug);
+
+      if (error) throw error;
+
+      setOrganization((prev) => ({ ...prev, ...editForm }));
+    } catch (err) {
+      console.error("Update error:", err);
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -143,7 +158,7 @@ export default function OrganizationProfile({ params }) {
             <Chip>
               {organization.city}, {organization.country}
             </Chip>
-            <Chip>{jobs.length} Jobs</Chip>
+            <Chip>{data.jobs.length} Jobs</Chip>
             {organization.company_size && (
               <Chip>{organization.company_size} Employees</Chip>
             )}
@@ -159,7 +174,9 @@ export default function OrganizationProfile({ params }) {
                 <Modal.Dialog>
                   <Modal.CloseTrigger /> {/* Optional: Close button */}
                   <Modal.Header>
-                    <Modal.Icon /> {/* Optional: Icon */}
+                    <Modal.Icon>
+                      <PenLine />
+                    </Modal.Icon>
                     <Modal.Heading>Edit Organization</Modal.Heading>
                   </Modal.Header>
                   <Modal.Body>
@@ -173,10 +190,69 @@ export default function OrganizationProfile({ params }) {
                           id="input-org-name"
                           placeholder="Acme Inc"
                           fullWidth
+                          value={editForm.org_name}
+                          onChange={(e) => updateEditField("org_name", e.target.value)}
                         />
                       </TextField>
+                      <TextField>
+                        <Label htmlFor="input-org-des">Description</Label>
+                        <TextArea
+                          variant="secondary"
+                          id="input-org-des"
+                          placeholder="A industry builds something"
+                          rows={3}
+                          fullWidth
+                          value={editForm.description}
+                          onChange={(e) => updateEditField("description", e.target.value)}
+                        />
+                        <Description className="self-end">{editForm.description.length}/30</Description>
+                      </TextField>
+                      <TextField>
+                        <Label htmlFor="input-org-ads">Address</Label>
+                        <TextArea
+                          variant="secondary"
+                          id="input-org-ads"
+                          placeholder="Pakistan, Islamabad"
+                          rows={2}
+                          fullWidth
+                          value={editForm.street_address}
+                          onChange={(e) => updateEditField("street_address", e.target.value)}
+                        />
+                      </TextField>
+                      <div className="grid grid-cols-2 gap-2">
+                        <TextField>
+                          <Label htmlFor="input-org-size">Company Size</Label>
+                          <Input
+                            variant="secondary"
+                            id="input-org-size"
+                            placeholder="e.g., 50"
+                            fullWidth
+                            value={editForm.company_size}
+                            onChange={(e) => updateEditField("company_size", e.target.value)}
+                          />
+                        </TextField>
+                        <TextField>
+                          <Label htmlFor="input-org-typ">Company Type</Label>
+                          <Input
+                            variant="secondary"
+                            id="input-org-typ"
+                            placeholder="e.g., Tech"
+                            fullWidth
+                            value={editForm.company_type}
+                            onChange={(e) => updateEditField("company_type", e.target.value)}
+                          />
+                        </TextField>
+                      </div>
                     </div>
                   </Modal.Body>
+                  <Modal.Footer>
+                    <Button slot="close" variant="secondary">
+                      Cancel
+                    </Button>
+                    <Button slot="close" onClick={handleUpdate} isLoading={editLoading}>
+                      Save Changes
+                    </Button>
+                  </Modal.Footer>
                 </Modal.Dialog>
               </Modal.Container>
             </Modal.Backdrop>
@@ -238,7 +314,7 @@ export default function OrganizationProfile({ params }) {
       <div className="mt-2">
         <h2 className="text-lg font-bold mb-3">Jobs</h2>
         <div className="w-full grid grid-cols-3 gap-2">
-          {jobs.map((job) => (
+          {data.jobs.map((job) => (
             <JobDrawer showImage={false} key={job.id} job={job} />
           ))}
         </div>

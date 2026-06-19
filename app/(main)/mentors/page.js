@@ -1,34 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button, InputGroup, ListBox, Select } from "@heroui/react";
-import { data } from "@/config/data";
+import { supabase } from "@/lib/supabase";
 import { Search, SlidersHorizontal, Trash } from "lucide-react";
 import { MentorDrawer } from "@/components/custom/drawer-mentor";
 
 export default function MentorsPage() {
   const [search, setSearch] = useState("");
   const [expertiseFilter, setExpertiseFilter] = useState("all");
+  const [mentors, setMentors] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Transform mock data to match component structure
-  const mentors = data.mentors.map((mentor, idx) => ({
-    id: idx + 1,
-    name: mentor.name,
-    bio: mentor.bio,
-    picture: mentor.pic,
-    expertise: mentor.expertise,
-    experience: mentor.experience,
-  }));
+  useEffect(() => {
+    async function fetchMentors() {
+      const { data, error } = await supabase
+        .from("mentors")
+        .select("id, name, bio, expertise, field, institute, email, phone");
+
+      if (!error && data) {
+        setMentors(data);
+      }
+      setLoading(false);
+    }
+
+    fetchMentors();
+  }, []);
+
   const expertiseOptions = [
     "all",
-    ...Array.from(new Set(mentors.flatMap((mentor) => mentor.expertise))).sort(),
+    ...Array.from(new Set(mentors.flatMap((m) => m.expertise ? m.expertise.split(",").map((s) => s.trim()) : []))).sort(),
   ];
+
   const filteredMentors = mentors.filter((mentor) => {
     const matchesSearch =
       mentor.name.toLowerCase().includes(search.toLowerCase()) ||
-      mentor.bio.toLowerCase().includes(search.toLowerCase());
+      (mentor.bio && mentor.bio.toLowerCase().includes(search.toLowerCase()));
     const matchesExpertise =
-      expertiseFilter === "all" || mentor.expertise.includes(expertiseFilter);
+      expertiseFilter === "all" ||
+      (mentor.expertise && mentor.expertise.toLowerCase().includes(expertiseFilter.toLowerCase()));
 
     return matchesSearch && matchesExpertise;
   });
@@ -80,22 +90,48 @@ export default function MentorsPage() {
             </Select.Trigger>
             <Select.Popover>
               <ListBox>
-                {expertiseOptions.map((expertise) => (
-                  <ListBox.Item key={expertise} value={expertise}>
-                    {expertise === "all" ? "All Expertise" : expertise}
-                  </ListBox.Item>
-                ))}
+                
               </ListBox>
             </Select.Popover>
           </Select>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredMentors.map((mentor) => (
-          <MentorDrawer key={mentor.id} mentor={mentor} />
-        ))}
-      </div>
+      {loading ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="animate-pulse rounded-xl bg-accent-soft-hover p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-background-secondary" />
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 w-32 bg-background-secondary rounded" />
+                  <div className="h-3 w-24 bg-background-secondary rounded" />
+                </div>
+              </div>
+              <div className="h-3 w-full bg-background-secondary rounded" />
+              <div className="h-3 w-3/4 bg-background-secondary rounded" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredMentors.map((mentor) => (
+            <MentorDrawer
+              key={mentor.id}
+              mentor={{
+                ...mentor,
+                expertise: mentor.expertise
+                  ? mentor.expertise.split(",").map((s) => s.trim())
+                  : [],
+                picture: mentor.pic || "",
+              }}
+            />
+          ))}
+          {filteredMentors.length === 0 && (
+            <p className="col-span-3 text-center text-muted py-12">No mentors found.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
