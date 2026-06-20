@@ -83,7 +83,7 @@ export default function JobsPage() {
               </ListBox>
             </Select.Popover>
           </Select>
-          <Link href="/jobs/create">
+          <Link href="/job/create">
             <Button>
               <Plus />
               Create

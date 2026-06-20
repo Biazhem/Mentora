@@ -13,15 +13,16 @@ import {
   TextField,
   Typography,
 } from "@heroui/react";
+import { Separator } from "@heroui/react";
 
-function StudentGeneralForm({ formData, updateField }) {
+function StudentGeneralForm({ formData, updateField, onCvUpload, cvLoading }) {
   return (
     <div className="space-y-2">
       <div>
         <Typography.Heading level={3}>Personal Info</Typography.Heading>
         <Description>Set up your basic profile details</Description>
       </div>
-      <div className="flex w-80 flex-col gap-4">
+      <div className="flex w-80 flex-col gap-2">
         <div className="flex flex-col items-center justify-center w-30 h-30 bg-accent-soft-hover rounded-xl border border-dashed border-muted/40 cursor-pointer hover:bg-accent-soft transition-colors mx-auto lg:mx-0">
           <span className="text-xs text-muted font-medium">Upload Avatar</span>
         </div>
@@ -60,6 +61,29 @@ function StudentGeneralForm({ formData, updateField }) {
             onChange={(e) => updateField("phone", e.target.value)}
           />
         </TextField>
+        <Description className="self-center my-0">OR</Description>
+        <TextField>
+          <Label htmlFor="student-cv">Get information from Resume</Label>
+          <div className="relative flex flex-col items-center justify-center p-4 border border-dashed border-muted/40 rounded-xl bg-background-secondary hover:bg-accent-soft transition-colors cursor-pointer group">
+            <input
+              type="file"
+              id="student-cv"
+              accept=".pdf,.doc,.docx"
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              onChange={onCvUpload}
+            />
+            {cvLoading ? (
+              <span className="text-xs font-medium text-primary">Parsing resume...</span>
+            ) : (
+              <>
+                <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
+                  Choose PDF / Word file
+                </span>
+                <span className="text-[10px] text-muted mt-1">Max size 5MB</span>
+              </>
+            )}
+          </div>
+        </TextField>
       </div>
     </div>
   );
@@ -69,32 +93,53 @@ function StudentAcademicForm({ formData, updateField }) {
   return (
     <div className="space-y-2">
       <div>
-        <Typography.Heading level={3}>Academic Info</Typography.Heading>
-        <Description>Tell us where and what you are studying</Description>
+        <Typography.Heading level={3}>Additional Info</Typography.Heading>
+        <Description>Tell us where and who you are</Description>
       </div>
       <div className="flex w-80 flex-col gap-4">
         <TextField>
-          <Label htmlFor="student-uni">University / Institute</Label>
-          <Input
-            id="student-uni"
-            placeholder="Fast NUCES, Islamabad"
+          <Label htmlFor="student-bio">Bio / About</Label>
+          <TextArea
+            id="student-bio"
+            placeholder="I am a user"
+            rows={4}
             fullWidth
-            value={formData.university}
-            onChange={(e) => updateField("university", e.target.value)}
+            value={formData.bio}
+            onChange={(e) => updateField("bio", e.target.value)}
           />
         </TextField>
 
         <TextField>
-          <Label htmlFor="student-semester">Current Semester</Label>
-          <Input
-            id="student-semester"
-            type="number"
-            min="1"
-            max="12"
-            placeholder="e.g., 6"
+          <Label htmlFor="student-ads">Address</Label>
+          <TextArea
+            id="student-ads"
+            rows={3}
+            placeholder="Califonia etc"
             fullWidth
-            value={formData.semester}
-            onChange={(e) => updateField("semester", e.target.value)}
+            value={formData.address}
+            onChange={(e) => updateField("address", e.target.value)}
+          />
+        </TextField>
+        <TextField>
+          <Label htmlFor="student-dob">Date of birth</Label>
+          <Input
+            id="student-dob"
+            type="date"
+            placeholder="19/5/1996"
+            fullWidth
+            value={formData.dob}
+            onChange={(e) => updateField("dob", e.target.value)}
+          />
+        </TextField>
+        <TextField>
+          <Label htmlFor="student-lang">Languages</Label>
+          <Input
+            id="student-lang"
+            type="text"
+            placeholder="Engish,Urdu"
+            fullWidth
+            value={formData.languages}
+            onChange={(e) => updateField("languages", e.target.value)}
           />
         </TextField>
       </div>
@@ -110,6 +155,16 @@ function StudentExpertiseForm({ formData, updateField }) {
         <Description>Highlight your skillset and focus domains</Description>
       </div>
       <div className="flex w-80 flex-col gap-4">
+        <TextField>
+          <Label htmlFor="student-fild">Field</Label>
+          <Input
+            id="student-fild"
+            placeholder="e.g., Frontend Development, UI/UX"
+            fullWidth
+            value={formData.program}
+            onChange={(e) => updateField("program", e.target.value)}
+          />
+        </TextField>
         <TextField>
           <Label htmlFor="student-expertise">Area of Expertise / Focus</Label>
           <Input
@@ -157,14 +212,20 @@ export default function StudentOnboardingPage() {
   const router = useRouter();
   const [activeForm, setActiveForm] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [cvLoading, setCvLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
-    university: "",
-    semester: "",
+    bio: "",
+    address: "",
+    dob: "",
+    languages: "",
+    program: "",
     expertise: "",
     skills: "",
+    university: "",
+    status: "",
   });
   const totalSteps = 3;
 
@@ -190,6 +251,48 @@ export default function StudentOnboardingPage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleCvUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCvLoading(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+
+      const res = await fetch("/api/conver-parse", {
+        method: "POST",
+        body,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Parse failed");
+
+      const parsed = data.parsed;
+
+      setFormData((prev) => ({
+        ...prev,
+        name: [parsed.firstName, parsed.lastName].filter(Boolean).join(" ") || prev.name,
+        email: parsed.email || prev.email,
+        phone: parsed.phone || prev.phone,
+        program: parsed.program || prev.program,
+        expertise: parsed.degree || prev.expertise,
+        skills: Array.isArray(parsed.skills) ? parsed.skills.join(", ") : prev.skills,
+        bio: parsed.bio || prev.bio,
+        address: parsed.address || prev.address,
+        dob: parsed.dateOfBirth || prev.dob,
+        languages: Array.isArray(parsed.languages) ? parsed.languages.join(", ") : prev.languages,
+        university: parsed.university || prev.university,
+        status: parsed.status || prev.status,
+      }));
+    } catch (err) {
+      console.error("CV parse error:", err);
+    } finally {
+      setCvLoading(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!user) return;
 
@@ -200,10 +303,15 @@ export default function StudentOnboardingPage() {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        university: formData.university,
-        semester: formData.semester,
+        bio: formData.bio,
+        address: formData.address,
+        dob: formData.dob,
+        languages: formData.languages,
+        program: formData.program,
         expertise: formData.expertise,
         skills: formData.skills,
+        university: formData.university,
+        status: formData.status,
       });
 
       if (error) throw error;
@@ -228,7 +336,7 @@ export default function StudentOnboardingPage() {
     <div className="grid min-h-svh w-full grid-cols-1 lg:grid-cols-2 bg-accent-soft">
       <div className="flex flex-col items-center justify-center p-6 my-8">
         <div className="flex w-80 flex-col gap-6">
-          {activeForm === 1 && <StudentGeneralForm formData={formData} updateField={updateField} />}
+          {activeForm === 1 && <StudentGeneralForm formData={formData} updateField={updateField} onCvUpload={handleCvUpload} cvLoading={cvLoading} />}
           {activeForm === 2 && <StudentAcademicForm formData={formData} updateField={updateField} />}
           {activeForm === 3 && <StudentExpertiseForm formData={formData} updateField={updateField} />}
 

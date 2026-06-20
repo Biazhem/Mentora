@@ -1,31 +1,28 @@
-import { NextResponse } from 'next/server';
-import PDFParser from 'pdf2json'; // 1. Import the alternative
+import { NextResponse } from "next/server";
+import PDFParser from "pdf2json";
+
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 export async function POST(req) {
   try {
     const formData = await req.formData();
-    const file = formData.get('file');
+    const file = formData.get("file");
 
     if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // 2. Convert file to Buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 3. Extract text locally using pdf2json wrapped in a Promise
     const text = await new Promise((resolve, reject) => {
-      // The '1' parameter tells pdf2json to only parse raw text (improves speed)
-      const pdfParser = new PDFParser(this, 1); 
+      const pdfParser = new PDFParser(this, 1);
 
       pdfParser.on("pdfParser_dataError", (errData) => {
         reject(errData.parserError);
       });
 
       pdfParser.on("pdfParser_dataReady", () => {
-        // pdf2json returns text with a lot of URL-encoded characters (like %20 for spaces), 
-        // so we decode it here to get clean text.
         const rawText = pdfParser.getRawTextContent();
         resolve(decodeURIComponent(rawText));
       });
@@ -33,146 +30,88 @@ export async function POST(req) {
       pdfParser.parseBuffer(buffer);
     });
 
-    // --- YOUR EXISTING LLM LOGIC STARTS HERE ---
-    
-    let geminiParsed = null;
-
-    try {
-      const prompt = `
-You are a strict data extraction bot. Extract the resume into this EXACT JSON structure. 
-
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-oss-20b",
+        messages: [
+          {
+            role: "system",
+            content: `Extract resume information from the text. 
 Rules:
-1. ONLY output valid JSON. No markdown formatting, no explanations.
-2. You MUST include every single key listed below.
-3. If you cannot find the information for a field, you MUST return an empty string "". 
-4. program = field of study (e.g., Computer Science, Business).
-5. degree = highest qualification.
-
-Structure to fill out:
-{
-  "firstName": "",
-  "lastName": "",
-  "email": "",
-  "phone": "",
-  "program": "",
-  "degree": "",
-  "dateOfBirth": "",
-  "address": "",
-  "bio": "",
-  "skills": [],
-  "experiences": [],
-  "languages": []
-}
-
-Resume Text:
-${text}
-`;
-
-      const deepseekRes = await fetch(process.env.DEEPSEEK_ENDPOINT || 'https://api.deepseek.com/v1/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY || ''}`
+- bio = a short 1-2 sentence professional summary about the person (max 50 words). Keep it concise if not listed then generate from watching status and level.
+- university = the university or institute name from education section.
+- status = current status: "student" if currently enrolled, "graduate" if completed degree, "working" if employed.
+- Return empty string for missing strings and empty array for missing arrays.`,
+          },
+          {
+            role: "user",
+            content: `Extract the following resume text into the JSON schema.\n\nResume Text:\n${text}`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "resume_data",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                firstName: { type: "string" },
+                lastName: { type: "string" },
+                email: { type: "string" },
+                phone: { type: "string" },
+                program: { type: "string" },
+                degree: { type: "string" },
+                university: { type: "string" },
+                status: { type: "string" },
+                dateOfBirth: { type: "string" },
+                address: { type: "string" },
+                bio: { type: "string" },
+                skills: { type: "array", items: { type: "string" } },
+                experiences: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string" },
+                      company: { type: "string" },
+                      duration: { type: "string" },
+                    },
+                    required: ["title", "company", "duration"],
+                    additionalProperties: false,
+                  },
+                },
+                languages: { type: "array", items: { type: "string" } },
+              },
+              required: [
+                "firstName", "lastName", "email", "phone",
+                "program", "degree", "university", "status",
+                "dateOfBirth", "address", "bio",
+                "skills", "experiences", "languages",
+              ],
+              additionalProperties: false,
+            },
+          },
         },
-        body: JSON.stringify({
-          model: process.env.DEEPSEEK_MODEL || 'gpt-4o-mini',
-          response_format: { type: 'json_object' }, // <-- ADD THIS LINE
-          prompt: prompt,
-          max_tokens: 1500
-        })
-      });
-
-      if (!deepseekRes.ok) {
-        const txt = await deepseekRes.text();
-        throw new Error(`Deepseek error: ${txt}`);
-      }
-
-      const deepJson = await deepseekRes.json();
-      const genText =
-        deepJson.output?.[0]?.content ||
-        deepJson.data?.[0]?.text ||
-        deepJson.text ||
-        (typeof deepJson === 'string' ? deepJson : '');
-
-      const match = (genText || '').match(/\{[\s\S]*\}/);
-
-      if (match) {
-        const rawAiData = JSON.parse(match[0]);
-        
-        // The ultimate safety net: force the AI data into this exact shape
-        const defaultSchema = {
-          firstName: "", lastName: "", email: "", phone: "",
-          program: "", degree: "", dateOfBirth: "", address: "",
-          bio: "", skills: [], experiences: [], languages: []
-        };
-
-        // This guarantees all keys exist, even if rawAiData missed them
-        geminiParsed = {
-          ...defaultSchema,
-          ...rawAiData
-        };
-      }
-
-    } catch (e) {
-      console.error("Deepseek error:", e);
-    }
-
-    // --- YOUR EXISTING REGEX FALLBACK LOGIC ---
-    
-    function escapeRegex(str) {
-      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
-
-    const emailMatch = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
-    const phoneMatch = text.match(/(\+?\d{1,3}[\s-]?)?(\(?\d{2,4}\)?[\s-]?)?\d{3,4}[\s-]?\d{3,4}/);
-
-    let firstName = '';
-    let lastName = '';
-    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    if (lines.length) {
-      const parts = lines[0].split(/\s+/);
-      firstName = parts[0] || '';
-      lastName = parts.slice(1).join(' ') || '';
-    }
-    
-    // Expanded program fallback to catch more variations and keywords
-    const programMatch = text.match(/(computer science|software|information technology|data|business|engineering|finance|accounting|marketing|economics|mathematics|physics|chemistry|biology|psychology|nursing|design|arts|history|law)/i);
-    const degreeMatch = text.match(/\b(BSc|BS|MSc|MS|PhD|Bachelor|Master|Associate)\b/i);
-
-    const skillsList = [
-      'React','Node','JavaScript','TypeScript','Python','Java',
-      'C++','SQL','Git','Docker','Kubernetes','TensorFlow',
-      'AWS','Azure','HTML','CSS','Swift','Go','PHP','Rust'
-    ];
-    const skills = [...new Set(skillsList.filter(s => new RegExp('\\b' + escapeRegex(s) + '\\b', 'i').test(text)))];
-
-    const langList = ['English','French','Spanish','German','Arabic','Hindi','Urdu','Chinese','Japanese','Portuguese','Russian'];
-    const languages = [...new Set(langList.filter(l => new RegExp('\\b' + l + '\\b','i').test(text)))];
-
-    const expMatches = (text.match(/([A-Z][^.\n]{10,200}(?:\d{4}|\b\d{2}\b))/g) || []).slice(0, 6).map(s => s.trim());
-
-    const heuristicParsed = {
-      firstName, lastName,
-      email: emailMatch ? emailMatch[0] : '',
-      phone: phoneMatch ? phoneMatch[0] : '',
-      program: programMatch ? programMatch[0] : '',
-      programCustom: '',
-      degree: degreeMatch ? degreeMatch[0] : '',
-      dateOfBirth: '', address: '', bio: '', skills,
-      experiences: expMatches, languages
-    };
-
-    const finalParsed = {
-      ...heuristicParsed,
-      ...(geminiParsed || {})
-    };
-
-    return NextResponse.json({
-      text, // (Optional) Keeping this so you can debug the extracted string
-      parsed: finalParsed
+      }),
     });
 
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Groq error: ${errText}`);
+    }
+
+    const data = await response.json();
+    const parsed = JSON.parse(data.choices[0].message.content || "{}");
+
+    return NextResponse.json({ parsed });
   } catch (err) {
+    console.error("Parse error:", err);
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
   }
 }
