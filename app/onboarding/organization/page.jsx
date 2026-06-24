@@ -335,28 +335,46 @@ export default function Page() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("organizations").insert({
-        clerk_id: user.id,
-        org_name: formData.orgName,
-        description: formData.description,
-        org_email: formData.orgEmail,
-        company_type: formData.companyType,
-        company_size: formData.companySize,
-        company_level: formData.companyLevel,
-        org_phone: formData.orgPhone,
-        website: formData.website,
-        country: formData.country,
-        city: formData.city,
-        postal_code: formData.postalCode,
-        street_address: formData.streetAddress,
-        founder_name: formData.founderName,
-        founder_email: formData.founderEmail,
-        founder_phone: formData.founderPhone,
-        founder_gender: formData.founderGender,
-        founder_dob: formData.founderDob,
-      });
+      const { data: orgData, error } = await supabase
+        .from("organizations")
+        .insert({
+          clerk_id: user.id,
+          org_name: formData.orgName,
+          description: formData.description,
+          org_email: formData.orgEmail,
+          company_type: formData.companyType,
+          company_size: formData.companySize,
+          company_level: formData.companyLevel,
+          org_phone: formData.orgPhone,
+          website: formData.website,
+          country: formData.country,
+          city: formData.city,
+          postal_code: formData.postalCode,
+          street_address: formData.streetAddress,
+          founder_name: formData.founderName,
+          founder_email: formData.founderEmail,
+          founder_phone: formData.founderPhone,
+          founder_gender: formData.founderGender,
+          founder_dob: formData.founderDob,
+        })
+        .select("id")
+        .single();
 
       if (error) throw error;
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .single();
+
+      if (userData && orgData) {
+        await supabase.from("organization_members").insert({
+          organization_id: orgData.id,
+          user_id: userData.id,
+          role: "admin",
+        });
+      }
 
       router.push("/dashboard");
     } catch (err) {
