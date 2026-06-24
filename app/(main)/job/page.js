@@ -1,30 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@heroui/react";
 import Link from "next/link";
 import { Plus, Search, SlidersHorizontal, Trash } from "lucide-react";
-import { data } from "@/config/data";
+import { supabase } from "@/lib/supabase";
 import { InputGroup, Select, ListBox } from "@heroui/react";
 import { JobDrawer } from "@/components/custom/drawer-jobs";
 
 export default function JobsPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const jobs = data.jobs.map((job, idx) => ({
-    id: idx + 1,
-    title: job.title,
-    company: data.organizations[job.org_index].name,
-    companySlug: data.organizations[job.org_index].name
-      .toLowerCase()
-      .replace(/\s+/g, "-"),
-    location: "Remote",
-    type: job.type[0],
-    timing: job.timing[0],
-    description: job.description,
-    image: data.organizations[job.org_index].logo,
-  }));
+  useEffect(() => {
+    async function fetchJobs() {
+      const { data: jobData, error } = await supabase
+        .from("jobs")
+        .select("*, organizations(org_name)")
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+
+      if (!error && jobData) {
+        const mapped = jobData.map((job) => ({
+          id: job.id,
+          title: job.title,
+          company: job.organizations?.org_name || "Unknown",
+          location: job.city ? `${job.city}, ${job.country}` : job.country || "Remote",
+          type: job.job_type,
+          timing: job.workplace_type,
+          description: job.description,
+          image: null,
+        }));
+        setJobs(mapped);
+      }
+      setLoading(false);
+    }
+
+    fetchJobs();
+  }, []);
+
   const filteredJobs = jobs.filter((job) => {
     const matchesSearch =
       job.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -76,10 +92,10 @@ export default function JobsPage() {
             <Select.Popover>
               <ListBox>
                 <ListBox.Item value="all">All Types</ListBox.Item>
-                <ListBox.Item value="Full-time">Full-time</ListBox.Item>
-                <ListBox.Item value="Part-time">Part-time</ListBox.Item>
-                <ListBox.Item value="Internship">Internship</ListBox.Item>
-                <ListBox.Item value="Contract">Contract</ListBox.Item>
+                <ListBox.Item value="fulltime">Full-time</ListBox.Item>
+                <ListBox.Item value="parttime">Part-time</ListBox.Item>
+                <ListBox.Item value="internship">Internship</ListBox.Item>
+                <ListBox.Item value="contract">Contract</ListBox.Item>
               </ListBox>
             </Select.Popover>
           </Select>
@@ -92,11 +108,27 @@ export default function JobsPage() {
         </div>
       </div>
 
-      <div className="px-4 grid gap-6 md:grid-cols-2">
-        {filteredJobs.map((job) => (
-          <JobDrawer key={job.id} job={job} />
-        ))}
-      </div>
+      {loading ? (
+        <div className="px-4 grid gap-6 md:grid-cols-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="animate-pulse rounded-xl bg-accent-soft-hover p-4 space-y-3">
+              <div className="h-5 w-40 bg-background-secondary rounded" />
+              <div className="h-3 w-full bg-background-secondary rounded" />
+              <div className="h-3 w-3/4 bg-background-secondary rounded" />
+              <div className="h-6 w-20 bg-background-secondary rounded" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="px-4 grid gap-6 md:grid-cols-2">
+          {filteredJobs.map((job) => (
+            <JobDrawer key={job.id} job={job} showImage={false} />
+          ))}
+          {filteredJobs.length === 0 && (
+            <p className="col-span-2 text-center text-muted py-12">No jobs found.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
