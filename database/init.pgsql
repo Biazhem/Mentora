@@ -1,56 +1,113 @@
-CREATE TABLE IF NOT EXISTS public.users (
-  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  name text,
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.users (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  clerk_id text NOT NULL UNIQUE,
   email text NOT NULL UNIQUE,
+  updated_at timestamp with time zone DEFAULT now(),
   pic text,
-  user_type text DEFAULT 'student',
-  clerk_id text DEFAULT ''
+  name text,
+  CONSTRAINT users_pkey PRIMARY KEY (id)
 );
-
-CREATE TABLE IF NOT EXISTS public.organisation (
-  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  owner_id uuid NOT NULL REFERENCES public.users(id), -- Points to the creator/owner
-  name text NOT NULL,
-  description text,
-  logo text,
-  website text
+CREATE TABLE public.organizations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  clerk_id text NOT NULL,
+  org_name text NOT NULL DEFAULT ''::text,
+  description text NOT NULL DEFAULT ''::text,
+  org_email text NOT NULL DEFAULT ''::text,
+  company_type text NOT NULL DEFAULT ''::text,
+  company_size text NOT NULL DEFAULT ''::text,
+  company_level text NOT NULL DEFAULT ''::text,
+  org_phone text NOT NULL DEFAULT ''::text,
+  website text NOT NULL DEFAULT ''::text,
+  country text NOT NULL DEFAULT ''::text,
+  city text NOT NULL DEFAULT ''::text,
+  postal_code text NOT NULL DEFAULT ''::text,
+  street_address text NOT NULL DEFAULT ''::text,
+  founder_name text NOT NULL DEFAULT ''::text,
+  founder_email text NOT NULL DEFAULT ''::text,
+  founder_phone text NOT NULL DEFAULT ''::text,
+  founder_gender text NOT NULL DEFAULT ''::text,
+  founder_dob text NOT NULL DEFAULT ''::text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT organizations_pkey PRIMARY KEY (id),
+  CONSTRAINT organizations_clerk_id_fkey FOREIGN KEY (clerk_id) REFERENCES public.users(clerk_id)
 );
-
-create table if not exists jobs(
-  id uuid not null default gen_random_uuid() primary key,
-  org_id uuid not null references public.organisation(id),
-  title text not null,
-  description text,
-  type text[],
-  timing text[],
-  expeired boolean default false
+CREATE TABLE public.mentors (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  clerk_id text NOT NULL,
+  name text NOT NULL DEFAULT ''::text,
+  bio text NOT NULL DEFAULT ''::text,
+  email text NOT NULL DEFAULT ''::text,
+  phone text NOT NULL DEFAULT ''::text,
+  gender text NOT NULL DEFAULT ''::text,
+  dob text NOT NULL DEFAULT ''::text,
+  field text NOT NULL DEFAULT ''::text,
+  expertise text NOT NULL DEFAULT ''::text,
+  experience text NOT NULL DEFAULT ''::text,
+  institute text NOT NULL DEFAULT ''::text,
+  inst_email text NOT NULL DEFAULT ''::text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT mentors_pkey PRIMARY KEY (id),
+  CONSTRAINT mentors_clerk_id_fkey FOREIGN KEY (clerk_id) REFERENCES public.users(clerk_id)
 );
-
-create table if not exists events(
-  id uuid not null default gen_random_uuid() primary key,
-  org_id uuid not null references public.organisation(id),
-  title text not null,
-  description text,
-  type text,
-  start_date timestamp not null,
-  end_date timestamp not null,
-  location text not null,
-  created_at timestamp default now()
+CREATE TABLE public.students (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  clerk_id text NOT NULL UNIQUE,
+  name text NOT NULL DEFAULT ''::text,
+  email text NOT NULL DEFAULT ''::text,
+  phone text NOT NULL DEFAULT ''::text,
+  university text NOT NULL DEFAULT ''::text,
+  semester text NOT NULL DEFAULT ''::text,
+  expertise text NOT NULL DEFAULT ''::text,
+  skills text NOT NULL DEFAULT ''::text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT students_pkey PRIMARY KEY (id),
+  CONSTRAINT students_clerk_id_fkey FOREIGN KEY (clerk_id) REFERENCES public.users(clerk_id)
 );
-
-CREATE TABLE IF NOT EXISTS mentors (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  mentor_user_id uuid NOT NULL 
-    REFERENCES public.users(id) ON DELETE CASCADE,
-  bio text,
-  experience jsonb DEFAULT '[]',  
-  -- e.g. [{"company": "X", "years": 2}]
-  expertise text[],  
-  -- e.g. ['React', 'AI', 'Career Guidance']
-  email text not null,
-  phone text,
-  socials jsonb DEFAULT '[]',  
-  -- e.g. [{"platform": "LinkedIn", "url": "..."}]
-  created_at timestamp DEFAULT now(),
-  UNIQUE(mentor_user_id)
+CREATE TABLE public.organization_members (
+  organization_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  role text NOT NULL DEFAULT 'member'::text,
+  joined_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT organization_members_pkey PRIMARY KEY (organization_id, user_id),
+  CONSTRAINT fk_organization FOREIGN KEY (organization_id) REFERENCES public.organizations(id),
+  CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.jobs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  org_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  description text NOT NULL,
+  requirements text DEFAULT ''::text,
+  benefits text DEFAULT ''::text,
+  workplace_type text NOT NULL,
+  job_type text NOT NULL,
+  experience_level text NOT NULL,
+  industry text NOT NULL,
+  job_function text NOT NULL,
+  country text NOT NULL,
+  city text NOT NULL,
+  address text DEFAULT ''::text,
+  salary_min numeric,
+  salary_max numeric,
+  salary_currency character varying DEFAULT 'USD'::character varying,
+  salary_period text DEFAULT 'yearly'::text,
+  is_easy_apply boolean NOT NULL DEFAULT false,
+  external_apply_url text,
+  status text NOT NULL DEFAULT 'active'::text,
+  views_count integer NOT NULL DEFAULT 0,
+  applicants_count integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  expires_at timestamp with time zone,
+  CONSTRAINT jobs_pkey PRIMARY KEY (id),
+  CONSTRAINT jobs_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.organizations(id),
+  CONSTRAINT jobs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
