@@ -14,6 +14,7 @@ import {
 import { FabButton } from "../custom/drawer";
 import { ThemeSwitch } from "../theme/theme-switcher";
 import { Settings } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useOrgSelectorStore } from "@/stores/org-selector";
 import { useUser } from "@clerk/nextjs";
@@ -30,6 +31,7 @@ export default function MainHeader({
   const { user } = useUser();
   const fetchOrganizations = useOrgSelectorStore((state) => state.fetchOrganizations);
   const organizations = useOrgSelectorStore((state) => state.organizations);
+  const loading = useOrgSelectorStore((state) => state.loading);
   const selectedOrganizationId = useOrgSelectorStore((state) => state.selectedOrganizationId);
   const setSelectedOrganizationId = useOrgSelectorStore((state) => state.setSelectedOrganizationId);
 
@@ -70,33 +72,41 @@ export default function MainHeader({
         </Breadcrumbs>
       </div>
       <div className="flex items-center justify-between gap-2">
-        <Select
-          className="hidden w-56 lg:block"
-          placeholder="Select organization"
-          value={selectedOrganizationId}
-          onChange={(value) => setSelectedOrganizationId(value)}
-        >
-          <Select.Trigger>
-            <Select.Value className={"flex items-center gap-2 "} />
-            <Select.Indicator />
-          </Select.Trigger>
-          <Select.Popover>
-            <ListBox>
-              {organizations.map((itm) => (
-                <ListBox.Item key={itm.id} id={String(itm.id)} textValue={itm.org_name}>
-                  <Avatar size="sm">
-                    <Avatar.Fallback>{itm.org_name?.[0]?.toUpperCase() || "O"}</Avatar.Fallback>
-                  </Avatar>
-                  <div className="flex flex-col">
-                    <Label>{itm.org_name}</Label>
-                    <Description>{itm.description?.slice(0, 18) || ""}...</Description>
-                  </div>
-                  <ListBox.ItemIndicator />
-                </ListBox.Item>
-              ))}
-            </ListBox>
-          </Select.Popover>
-        </Select>
+        {organizations.length > 0 ? (
+          <Select
+            className="hidden w-56 lg:block"
+            placeholder="Select organization"
+            value={selectedOrganizationId}
+            onChange={(value) => setSelectedOrganizationId(value)}
+          >
+            <Select.Trigger>
+              <Select.Value className={"flex items-center gap-2 "} />
+              <Select.Indicator />
+            </Select.Trigger>
+            <Select.Popover>
+              <ListBox>
+                {organizations.map((itm) => (
+                  <ListBox.Item key={itm.id} id={String(itm.id)} textValue={itm.org_name}>
+                    <Avatar size="sm">
+                      <Avatar.Fallback>{itm.org_name?.[0]?.toUpperCase() || "O"}</Avatar.Fallback>
+                    </Avatar>
+                    <div className="flex flex-col">
+                      <Label>{itm.org_name}</Label>
+                      <Description>{itm.description?.slice(0, 18) || ""}...</Description>
+                    </div>
+                    <ListBox.ItemIndicator />
+                  </ListBox.Item>
+                ))}
+              </ListBox>
+            </Select.Popover>
+          </Select>
+        ) : !loading ? (
+          <Link href="/onboarding/organization">
+            <Button size="sm" variant="secondary" className="hidden lg:flex">
+              Create Organization
+            </Button>
+          </Link>
+        ) : null}
         <ButtonGroup>
           <Button isIconOnly size="lg" variant="tertiary">
             <Settings />
