@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { supabase } from "@/lib/supabase";
 import {
   Input,
   Button,
@@ -207,13 +206,15 @@ export default function Page() {
     async function checkExisting() {
       if (!isLoaded || !user) return;
 
-      const { data, error } = await supabase
-        .from("mentors")
-        .select("id")
-        .eq("clerk_id", user.id)
-        .maybeSingle();
+      const res = await fetch("/api/auth/sync-mentor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clerk_id: user.id, name: "" }),
+      });
 
-      if (!error && data) {
+      const data = await res.json();
+
+      if (data.isNew === false) {
         router.push("/dashboard");
       }
     }
@@ -230,22 +231,28 @@ export default function Page() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("mentors").insert({
-        clerk_id: user.id,
-        name: formData.name,
-        bio: formData.bio,
-        email: formData.email,
-        phone: formData.phone,
-        gender: formData.gender,
-        dob: formData.dob,
-        field: formData.field,
-        expertise: formData.expertise,
-        experience: formData.experience,
-        institute: formData.institute,
-        inst_email: formData.instEmail,
+      const res = await fetch("/api/auth/sync-mentor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clerk_id: user.id,
+          name: formData.name,
+          bio: formData.bio,
+          email: formData.email,
+          phone: formData.phone,
+          gender: formData.gender,
+          dob: formData.dob,
+          field: formData.field,
+          expertise: formData.expertise,
+          experience: formData.experience,
+          institute: formData.institute,
+          inst_email: formData.instEmail,
+        }),
       });
 
-      if (error) throw error;
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Sync failed");
 
       router.push("/dashboard");
     } catch (err) {

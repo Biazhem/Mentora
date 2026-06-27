@@ -26,11 +26,11 @@ import {
   TextArea,
   Description,
 } from "@heroui/react";
-import { data } from "@/config/data";
 export default function OrganizationProfile({ params }) {
   const { slug } = use(params);
   const [organization, setOrganization] = useState(null);
   const [members, setMembers] = useState([]);
+  const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editLoading, setEditLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -96,15 +96,26 @@ export default function OrganizationProfile({ params }) {
           setMembers(enriched);
         }
 
-        // const { data: jobData } = await supabase
-        //   .from("jobs")
-        //   .select("*")
-        //   .eq("org_id", slug)
-        //   .order("created_at", { ascending: false });
+        const { data: jobData } = await supabase
+          .from("jobs")
+          .select("*")
+          .eq("org_id", slug)
+          .order("created_at", { ascending: false });
 
-        // if (jobData) {
-        //   setJobs(jobData);
-        // }
+        if (jobData) {
+          const mappedJobs = jobData.map((job) => ({
+            id: job.id,
+            title: job.title,
+            company: orgData.org_name || "Unknown",
+            location: job.city ? `${job.city}, ${job.country}` : job.country || "Remote",
+            type: job.job_type,
+            timing: job.workplace_type,
+            description: job.description,
+            requirements: job.requirements,
+            org_image: null,
+          }));
+          setJobs(mappedJobs);
+        }
       } catch (err) {
         console.error("Fetch error:", err);
       } finally {
@@ -201,7 +212,7 @@ export default function OrganizationProfile({ params }) {
             <Chip>
               {organization.city}, {organization.country}
             </Chip>
-            <Chip>{data.jobs.length} Jobs</Chip>
+            <Chip>{jobs.length} Jobs</Chip>
             {organization.company_size && (
               <Chip>{organization.company_size} Employees</Chip>
             )}
@@ -395,14 +406,21 @@ export default function OrganizationProfile({ params }) {
         </div>
       )}
 
-      <div className="mt-2">
-        <h2 className="text-lg font-bold mb-3">Jobs</h2>
-        <div className="w-full grid grid-cols-3 gap-2">
-          {data.jobs.map((job) => (
-            <JobDrawer showImage={false} key={job.id} job={job} />
-          ))}
+      {jobs.length > 0 && (
+        <div className="mt-2">
+          <div className="flex gap-2 items-center mb-3">
+            <h2 className="text-lg font-bold">Jobs</h2>
+            <Chip variant="primary" color="accent" size="sm">
+              {jobs.length}
+            </Chip>
+          </div>
+          <div className="w-full grid gap-4 md:grid-cols-2">
+            {jobs.map((job) => (
+              <JobDrawer showImage={false} key={job.id} job={job} />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

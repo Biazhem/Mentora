@@ -1,5 +1,7 @@
 "use client";
 
+import { Avatar } from "@heroui/react";
+import { Description } from "@heroui/react";
 import { Chip } from "@heroui/react";
 import { Button, Card, Drawer } from "@heroui/react";
 
@@ -22,7 +24,7 @@ export function JobDrawer({ job, showImage = true, showDesc = false }) {
             <Card.Header className="mb-1 p-0">
               <Card.Title className="text-lg">{job.title}</Card.Title>
               <Card.Description>
-                Islamabad
+                {job.location}
               </Card.Description>
             </Card.Header>
 
@@ -46,18 +48,17 @@ export function JobDrawer({ job, showImage = true, showDesc = false }) {
               <Drawer.Heading>{job.title}</Drawer.Heading>
             </Drawer.Header>
             <Drawer.Body className="space-y-4">
-              {showImage && (
-                <div className="overflow-hidden rounded-lg">
-                  <img
-                    src={job.image}
-                    alt={job.company}
-                    className="h-40 w-full object-cover"
-                  />
-                </div>
-              )}
-              <div>
+              <div className="flex gap-2 items-center">
+                <Avatar size="lg">
+                  {job.org_image ? (
+                    <Avatar.Image src={job.org_image} alt={job.company} />
+                  ) : null}
+                  <Avatar.Fallback>{job.company?.[0]?.toUpperCase() || "O"}</Avatar.Fallback>
+                </Avatar>
+                <div>
                 <p className="text-sm text-foreground">Organization</p>
                 <p className="font-medium">{job.company}</p>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -75,7 +76,11 @@ export function JobDrawer({ job, showImage = true, showDesc = false }) {
               </div>
               <div>
                 <p className="text-sm text-foreground">Description</p>
-                <p className="text-foreground">{job.description}</p>
+                <Description className="text-foreground">{job.description}</Description>
+              </div>
+              <div>
+                <p className="text-sm text-foreground">Requirements</p>
+                <Description className="text-foreground">{job.requirements}</Description>
               </div>
             </Drawer.Body>
             <Drawer.Footer>

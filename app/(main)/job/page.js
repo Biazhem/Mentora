@@ -31,7 +31,8 @@ export default function JobsPage() {
           type: job.job_type,
           timing: job.workplace_type,
           description: job.description,
-          image: null,
+          org_image: null,
+          requirements: job.requirements,
         }));
         setJobs(mapped);
       }

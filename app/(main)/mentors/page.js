@@ -16,7 +16,7 @@ export default function MentorsPage() {
     async function fetchMentors() {
       const { data, error } = await supabase
         .from("mentors")
-        .select("id, name, bio, expertise, field, institute, email, phone");
+        .select("*");
 
       if (!error && data) {
         setMentors(data);
@@ -27,21 +27,8 @@ export default function MentorsPage() {
     fetchMentors();
   }, []);
 
-  const expertiseOptions = [
-    "all",
-    ...Array.from(new Set(mentors.flatMap((m) => m.expertise ? m.expertise.split(",").map((s) => s.trim()) : []))).sort(),
-  ];
+  
 
-  const filteredMentors = mentors.filter((mentor) => {
-    const matchesSearch =
-      mentor.name.toLowerCase().includes(search.toLowerCase()) ||
-      (mentor.bio && mentor.bio.toLowerCase().includes(search.toLowerCase()));
-    const matchesExpertise =
-      expertiseFilter === "all" ||
-      (mentor.expertise && mentor.expertise.toLowerCase().includes(expertiseFilter.toLowerCase()));
-
-    return matchesSearch && matchesExpertise;
-  });
 
   return (
     <div className="py-12 px-4">
@@ -115,21 +102,13 @@ export default function MentorsPage() {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredMentors.map((mentor) => (
+          {mentors.map((mentor) => (
             <MentorDrawer
               key={mentor.id}
-              mentor={{
-                ...mentor,
-                expertise: mentor.expertise
-                  ? mentor.expertise.split(",").map((s) => s.trim())
-                  : [],
-                picture: mentor.pic || "",
-              }}
+              mentor={mentor}
             />
           ))}
-          {filteredMentors.length === 0 && (
-            <p className="col-span-3 text-center text-muted py-12">No mentors found.</p>
-          )}
+          
         </div>
       )}
     </div>

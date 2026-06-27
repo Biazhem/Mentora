@@ -298,23 +298,21 @@ export default function StudentOnboardingPage() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("students").insert({
+      const { data, error } = await supabase.from("students").insert({
         clerk_id: user.id,
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        bio: formData.bio,
-        address: formData.address,
-        dob: formData.dob,
-        languages: formData.languages,
-        program: formData.program,
+        university: formData.university || formData.program || "",
+        semester: "",
         expertise: formData.expertise,
         skills: formData.skills,
-        university: formData.university,
-        status: formData.status,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Student insert error details:", JSON.stringify(error));
+        throw error;
+      }
 
       router.push("/dashboard");
     } catch (err) {

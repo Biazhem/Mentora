@@ -52,6 +52,9 @@ CREATE TABLE public.mentors (
   inst_email text NOT NULL DEFAULT ''::text,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
+  experiences ARRAY DEFAULT '{}'::jsonb[],
+  mentoring_style text,
+  availability text,
   CONSTRAINT mentors_pkey PRIMARY KEY (id),
   CONSTRAINT mentors_clerk_id_fkey FOREIGN KEY (clerk_id) REFERENCES public.users(clerk_id)
 );
@@ -110,4 +113,20 @@ CREATE TABLE public.jobs (
   CONSTRAINT jobs_pkey PRIMARY KEY (id),
   CONSTRAINT jobs_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.organizations(id),
   CONSTRAINT jobs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.events (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  org_id uuid NOT NULL,
+  title text DEFAULT ''::text,
+  headline text DEFAULT ''::text,
+  start_date date,
+  end_date date,
+  description text DEFAULT ''::text,
+  location text DEFAULT ''::text,
+  type text DEFAULT ''::text,
+  guest jsonb DEFAULT '{}'::jsonb,
+  links jsonb DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT events_pkey PRIMARY KEY (id),
+  CONSTRAINT events_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.organizations(id)
 );
