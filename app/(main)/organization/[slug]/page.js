@@ -3,17 +3,37 @@
 import { supabase } from "@/lib/supabase";
 import { Avatar, Button, Chip, Table } from "@heroui/react";
 import { use, useEffect, useState } from "react";
-import { PencilSimpleLineIcon, TrashIcon, UserIcon, DotsThreeIcon } from "@phosphor-icons/react";
-import { RotateCcw, Pencil, UserPlus, PenLine } from "lucide-react";
+import {
+  PencilSimpleLineIcon,
+  TrashIcon,
+  UserIcon,
+  DotsThreeIcon,
+} from "@phosphor-icons/react";
+import {
+  RotateCcw,
+  Pencil,
+  UserPlus,
+  PenLine,
+  Copy,
+  Check,
+} from "lucide-react";
 import { JobDrawer } from "@/components/custom/drawer-jobs";
-import { Modal, TextField, Label, Input, TextArea, Description } from "@heroui/react";
-import { data } from "@/config/data";
+import {
+  Modal,
+  TextField,
+  Label,
+  Input,
+  TextArea,
+  Description,
+} from "@heroui/react";
 export default function OrganizationProfile({ params }) {
   const { slug } = use(params);
   const [organization, setOrganization] = useState(null);
-  const [owner, setOwner] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editLoading, setEditLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [editForm, setEditForm] = useState({
     org_name: "",
     description: "",
@@ -51,25 +71,51 @@ export default function OrganizationProfile({ params }) {
           company_type: orgData.company_type || "",
         });
 
-        const { data: userData } = await supabase
-          .from("users")
-          .select("*")
-          .eq("clerk_id", orgData.clerk_id)
-          .single();
+        const { data: memberRows } = await supabase
+          .from("organization_members")
+          .select("role, joined_at, user_id")
+          .eq("organization_id", slug);
 
-        if (userData) {
-          setOwner(userData);
+        if (memberRows && memberRows.length > 0) {
+          const userIds = memberRows.map((m) => m.user_id);
+          const { data: usersData } = await supabase
+            .from("users")
+            .select("id, name, email, pic")
+            .in("id", userIds);
+
+          const usersMap = {};
+          (usersData || []).forEach((u) => {
+            usersMap[u.id] = u;
+          });
+
+          const enriched = memberRows.map((m) => ({
+            ...m,
+            user: usersMap[m.user_id] || null,
+          }));
+
+          setMembers(enriched);
         }
 
-        // const { data: jobData } = await supabase
-        //   .from("jobs")
-        //   .select("*")
-        //   .eq("org_id", slug)
-        //   .order("created_at", { ascending: false });
+        const { data: jobData } = await supabase
+          .from("jobs")
+          .select("*")
+          .eq("org_id", slug)
+          .order("created_at", { ascending: false });
 
-        // if (jobData) {
-        //   setJobs(jobData);
-        // }
+        if (jobData) {
+          const mappedJobs = jobData.map((job) => ({
+            id: job.id,
+            title: job.title,
+            company: orgData.org_name || "Unknown",
+            location: job.city ? `${job.city}, ${job.country}` : job.country || "Remote",
+            type: job.job_type,
+            timing: job.workplace_type,
+            description: job.description,
+            requirements: job.requirements,
+            org_image: null,
+          }));
+          setJobs(mappedJobs);
+        }
       } catch (err) {
         console.error("Fetch error:", err);
       } finally {
@@ -102,6 +148,14 @@ export default function OrganizationProfile({ params }) {
     } finally {
       setEditLoading(false);
     }
+  };
+
+  const handleCopyInvite = () => {
+    const url = `${window.location.origin}/organization/${slug}/invite`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   if (loading) {
@@ -158,7 +212,7 @@ export default function OrganizationProfile({ params }) {
             <Chip>
               {organization.city}, {organization.country}
             </Chip>
-            <Chip>{data.jobs.length} Jobs</Chip>
+            <Chip>{jobs.length} Jobs</Chip>
             {organization.company_size && (
               <Chip>{organization.company_size} Employees</Chip>
             )}
@@ -191,7 +245,9 @@ export default function OrganizationProfile({ params }) {
                           placeholder="Acme Inc"
                           fullWidth
                           value={editForm.org_name}
-                          onChange={(e) => updateEditField("org_name", e.target.value)}
+                          onChange={(e) =>
+                            updateEditField("org_name", e.target.value)
+                          }
                         />
                       </TextField>
                       <TextField>
@@ -203,9 +259,13 @@ export default function OrganizationProfile({ params }) {
                           rows={3}
                           fullWidth
                           value={editForm.description}
-                          onChange={(e) => updateEditField("description", e.target.value)}
+                          onChange={(e) =>
+                            updateEditField("description", e.target.value)
+                          }
                         />
-                        <Description className="self-end">{editForm.description.length}/30</Description>
+                        <Description className="self-end">
+                          {editForm.description.length}/30
+                        </Description>
                       </TextField>
                       <TextField>
                         <Label htmlFor="input-org-ads">Address</Label>
@@ -216,7 +276,9 @@ export default function OrganizationProfile({ params }) {
                           rows={2}
                           fullWidth
                           value={editForm.street_address}
-                          onChange={(e) => updateEditField("street_address", e.target.value)}
+                          onChange={(e) =>
+                            updateEditField("street_address", e.target.value)
+                          }
                         />
                       </TextField>
                       <div className="grid grid-cols-2 gap-2">
@@ -228,7 +290,9 @@ export default function OrganizationProfile({ params }) {
                             placeholder="e.g., 50"
                             fullWidth
                             value={editForm.company_size}
-                            onChange={(e) => updateEditField("company_size", e.target.value)}
+                            onChange={(e) =>
+                              updateEditField("company_size", e.target.value)
+                            }
                           />
                         </TextField>
                         <TextField>
@@ -239,7 +303,9 @@ export default function OrganizationProfile({ params }) {
                             placeholder="e.g., Tech"
                             fullWidth
                             value={editForm.company_type}
-                            onChange={(e) => updateEditField("company_type", e.target.value)}
+                            onChange={(e) =>
+                              updateEditField("company_type", e.target.value)
+                            }
                           />
                         </TextField>
                       </div>
@@ -249,7 +315,11 @@ export default function OrganizationProfile({ params }) {
                     <Button slot="close" variant="secondary">
                       Cancel
                     </Button>
-                    <Button slot="close" onClick={handleUpdate} isLoading={editLoading}>
+                    <Button
+                      slot="close"
+                      onClick={handleUpdate}
+                      isLoading={editLoading}
+                    >
                       Save Changes
                     </Button>
                   </Modal.Footer>
@@ -257,15 +327,21 @@ export default function OrganizationProfile({ params }) {
               </Modal.Container>
             </Modal.Backdrop>
           </Modal>
-          <Button>
-            <UserPlus /> Invite
+          <Button onClick={handleCopyInvite}>
+            {copied ? <Check /> : <UserPlus />}
+            {copied ? "Copied!" : "Invite"}
           </Button>
         </div>
       </div>
 
-      {owner && (
+      {members.length > 0 && (
         <div className="mt-2">
-          <h2 className="text-lg font-bold mb-3">Members</h2>
+          <div className="flex gap-2 items-center">
+            <h2 className="text-lg font-bold">Members</h2>
+            <Chip variant="primary" color="accent" size="sm">
+              {members.length}
+            </Chip>
+          </div>
           <Table>
             <Table.ScrollContainer>
               <Table.Content
@@ -278,32 +354,51 @@ export default function OrganizationProfile({ params }) {
                   <Table.Column>Email</Table.Column>
                   <Table.Column className="justify-end items-center flex gap-2">
                     Actions
-                    <Button variant="tertiary" isIconOnly size="sm">
-                      <RotateCcw />
-                    </Button>
                   </Table.Column>
                 </Table.Header>
                 <Table.Body>
-                  <Table.Row>
-                    <Table.Cell>{owner.name}</Table.Cell>
-                    <Table.Cell>
-                      <Chip variant={"primary"}>Founder</Chip>
-                    </Table.Cell>
-                    <Table.Cell>{owner.email}</Table.Cell>
-                    <Table.Cell
-                      className={"flex items-center justify-end gap-1"}
-                    >
-                      <Button isIconOnly size="sm" variant="tertiary">
-                        <DotsThreeIcon weight="bold" />
-                      </Button>
-                      <Button isIconOnly size="sm" variant="tertiary">
-                        <UserIcon weight="bold" />
-                      </Button>
-                      {/* <Button isIconOnly variant="danger-soft" size="sm">
-                      <TrashIcon weight="bold" />
-                    </Button> */}
-                    </Table.Cell>
-                  </Table.Row>
+                  {members.map((member) => (
+                    <Table.Row key={member.user_id}>
+                      <Table.Cell>
+                        <div className="flex items-center gap-2">
+                          <Avatar size="sm">
+                            {member.user?.pic ? (
+                              <Avatar.Image
+                                src={member.user.pic}
+                                alt={member.user.name}
+                              />
+                            ) : null}
+                            <Avatar.Fallback>
+                              {member.user?.name
+                                ?.split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .toUpperCase() || "?"}
+                            </Avatar.Fallback>
+                          </Avatar>
+                          {member.user?.name || "Unknown"}
+                        </div>
+                      </Table.Cell>
+                      <Table.Cell>
+                        <Chip
+                          variant={
+                            member.role === "admin" ? "primary" : "tertiary"
+                          }
+                        >
+                          {member.role}
+                        </Chip>
+                      </Table.Cell>
+                      <Table.Cell>{member.user?.email || "-"}</Table.Cell>
+                      <Table.Cell className="flex items-center justify-end gap-1">
+                        <Button isIconOnly size="sm" variant="tertiary">
+                          <DotsThreeIcon weight="bold" />
+                        </Button>
+                        <Button isIconOnly size="sm" variant="tertiary">
+                          <UserIcon weight="bold" />
+                        </Button>
+                      </Table.Cell>
+                    </Table.Row>
+                  ))}
                 </Table.Body>
               </Table.Content>
             </Table.ScrollContainer>
@@ -311,14 +406,21 @@ export default function OrganizationProfile({ params }) {
         </div>
       )}
 
-      <div className="mt-2">
-        <h2 className="text-lg font-bold mb-3">Jobs</h2>
-        <div className="w-full grid grid-cols-3 gap-2">
-          {data.jobs.map((job) => (
-            <JobDrawer showImage={false} key={job.id} job={job} />
-          ))}
+      {jobs.length > 0 && (
+        <div className="mt-2">
+          <div className="flex gap-2 items-center mb-3">
+            <h2 className="text-lg font-bold">Jobs</h2>
+            <Chip variant="primary" color="accent" size="sm">
+              {jobs.length}
+            </Chip>
+          </div>
+          <div className="w-full grid gap-4 md:grid-cols-2">
+            {jobs.map((job) => (
+              <JobDrawer showImage={false} key={job.id} job={job} />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

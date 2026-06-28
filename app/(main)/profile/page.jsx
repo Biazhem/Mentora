@@ -1,153 +1,92 @@
-"use client";
-import { Button, Chip, Card } from "@heroui/react";
-import {
-  Mail,
-  Phone,
-  MapPin,
-  GraduationCap,
-  Briefcase,
-  Edit,
-} from "lucide-react";
+"use client"
+
+import { MentorComponent } from "@/components/custom/mentor";
+import { StudentComponent } from "@/components/custom/student";
+import { FounderComponent } from "@/components/custom/founder";
 import { useUser } from "@clerk/nextjs";
-import { Avatar } from "@heroui/react";
+import { supabase } from "@/lib/supabase";
+import { useEffect, useState } from "react";
 
 export default function Page() {
   const { user, isLoaded } = useUser();
+  const [roles, setRoles] = useState({ isStudent: false, isMentor: false, isFounder: false });
+  const [loading, setLoading] = useState(true);
 
-  const userData = {
-    name: user?.fullName,
-    role: "Student",
-    email: user?.primaryEmailAddress?.emailAddress,
-    phone: "+92 300 1234567",
-    location: "Islamabad, Pakistan",
-    university: "Islamic International University",
-    skills: ["React", "Next.js", "UI Design", "Java"],
-    imageUrl: user?.imageUrl
-  };
+  useEffect(() => {
+    async function checkRoles() {
+      if (!isLoaded || !user) return;
 
-  if (!isLoaded) {
-    return <p>loading</p>;
-  }
+      try {
+        const { data: studentData } = await supabase
+          .from("students")
+          .select("id")
+          .eq("clerk_id", user.id)
+          .maybeSingle();
 
-  if (!user) {
-    return null;
-  }
-  return (
-    <div className="grid gap-6 md:grid-cols-3 h-full">
-      {/* LEFT PROFILE CARD */}
+        const { data: mentorData } = await supabase
+          .from("mentors")
+          .select("id")
+          .eq("clerk_id", user.id)
+          .maybeSingle();
 
-      <Card>
-        <CardContent className="flex flex-col items-center text-center p-6">
-          <Avatar className="h-44 w-44 mb-4 rounded-lg">
-            <Avatar.Image
-              src={userData.imageUrl}
-              alt={userData.fullName ?? "User"}
-              className="rounded-full"
-            />
-            <Avatar.Fallback className="rounded-lg">
-              {userData.firstName?.charAt(0)}
-            </Avatar.Fallback>
-          </Avatar>
+        const { data: founderData } = await supabase
+          .from("organizations")
+          .select("id")
+          .eq("clerk_id", user.id)
+          .maybeSingle();
 
-          <h2 className="text-xl font-semibold">{userData.name}</h2>
+        setRoles({
+          isStudent: !!studentData,
+          isMentor: !!mentorData,
+          isFounder: !!founderData,
+        });
+      } catch (err) {
+        console.error("Check roles error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-          <Chip className="mt-2">{userData.role}</Chip>
+    checkRoles();
+  }, [isLoaded, user]);
 
-          <Button className="mt-4 w-full">
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Profile
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* RIGHT DETAILS */}
-
-      <div className="md:col-span-2 space-y-6">
-        {/* CONTACT INFO */}
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Contact Information</CardTitle>
-          </CardHeader>
-
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              <span>{userData.email}</span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Phone className="h-4 w-4 text-muted-foreground" />
-              <span>{userData.phone}</span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span>{userData.location}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* EDUCATION */}
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Education</CardTitle>
-          </CardHeader>
-
-          <CardContent className="flex items-center gap-3">
-            <GraduationCap className="h-5 w-5 text-muted-foreground" />
-
-            <div>
-              <p className="font-medium">{userData.university}</p>
-
-              <p className="text-sm text-muted-foreground">
-                BS Software Engineering
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* SKILLS */}
-
-        <Card>
-          <Card.Header>
-            <Card.Title>Skills</Card.Title>
-          </Card.Header>
-
-          <Card.Content className="flex flex-wrap gap-2">
-            {userData.skills.map((skill, i) => (
-              <Chip key={i} variant="secondary">
-                {skill}
-              </Chip>
-            ))}
-          </Card.Content>
-        </Card>
-
-        {/* EXPERIENCE */}
-
-        <Card>
-          <Card.Header>
-            <Card.Title>Experience</Card.Title>
-          </Card.Header>
-
-          <Card.Content className="flex gap-3">
-            <Briefcase className="h-5 w-5 text-muted-foreground" />
-
-            <div>
-              <p className="font-medium">Frontend Intern</p>
-
-              <p className="text-xs text-muted-foreground">TechCorp • 2024</p>
-              <p className="text-sm">
-                Worked as a Frontend Developer Intern at TechCorp. Built
-                responsive UI components using React and Tailwind CSS.
-                Collaborated with the design team to improve user experience and
-                optimized performance of web pages.
-              </p>
-            </div>
-          </Card.Content>
-        </Card>
+  if (loading) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="animate-pulse h-8 w-48 bg-accent-soft-hover rounded" />
+        <div className="animate-pulse h-32 bg-accent-soft-hover rounded" />
       </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold">My Profile</h1>
+
+      {roles.isFounder && (
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Founder</h2>
+          <FounderComponent />
+        </div>
+      )}
+
+      {roles.isMentor && (
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Mentor</h2>
+          <MentorComponent />
+        </div>
+      )}
+
+      {roles.isStudent && (
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Student</h2>
+          <StudentComponent />
+        </div>
+      )}
+
+      {!roles.isFounder && !roles.isMentor && !roles.isStudent && (
+        <p className="text-muted">No profile data found. Complete onboarding to set up your profile.</p>
+      )}
     </div>
   );
 }
