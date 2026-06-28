@@ -130,3 +130,18 @@ CREATE TABLE public.events (
   CONSTRAINT events_pkey PRIMARY KEY (id),
   CONSTRAINT events_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.organizations(id)
 );
+CREATE TABLE public.job_applications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  job_id uuid NOT NULL,
+  student_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  status text NOT NULL DEFAULT 'pending'::text,
+  cover_letter text DEFAULT ''::text,
+  resume_url text,
+  applied_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT job_applications_pkey PRIMARY KEY (id),
+  CONSTRAINT job_applications_job_id_fkey FOREIGN KEY (job_id) REFERENCES public.jobs(id),
+  CONSTRAINT job_applications_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
+  CONSTRAINT job_applications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);

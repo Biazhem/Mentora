@@ -4,8 +4,11 @@ import { Avatar } from "@heroui/react";
 import { Description } from "@heroui/react";
 import { Chip } from "@heroui/react";
 import { Button, Card, Drawer } from "@heroui/react";
+import Link from "next/link"
 
 export function JobDrawer({ job, showImage = true, showDesc = false }) {
+  const isExpired = job.expires_at && new Date(job.expires_at) < new Date();
+
   return (
     <Drawer>
       <Drawer.Trigger className="text-left">
@@ -32,10 +35,15 @@ export function JobDrawer({ job, showImage = true, showDesc = false }) {
               {job.description}
             </p>
 
-            <Card.Footer className="mt-auto p-0">
+            <Card.Footer className="mt-auto p-0 flex gap-2">
               <Chip variant="primary" color="accent">
                 {job.type}
               </Chip>
+              {isExpired && (
+                <Chip color="danger" variant="soft">
+                  Expired
+                </Chip>
+              )}
             </Card.Footer>
           </div>
         </Card>
@@ -87,7 +95,11 @@ export function JobDrawer({ job, showImage = true, showDesc = false }) {
               <Button slot="close" variant="secondary">
                 Close
               </Button>
-              <Button slot="close">Apply</Button>
+              <Link href={isExpired ? "#" : `/job/${job.id}`}>
+              <Button slot="close" isDisabled={isExpired}>
+                {isExpired ? "Expired" : "Apply"}
+              </Button>
+              </Link>
             </Drawer.Footer>
           </Drawer.Dialog>
         </Drawer.Content>

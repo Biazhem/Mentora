@@ -101,11 +101,7 @@ export default function MainHeader({
             </Select.Popover>
           </Select>
         ) : !loading ? (
-          <Link href="/onboarding/organization">
-            <Button size="sm" variant="secondary" className="hidden lg:flex">
-              Create Organization
-            </Button>
-          </Link>
+          <></>
         ) : null}
         <ButtonGroup>
           <Button isIconOnly size="lg" variant="tertiary">

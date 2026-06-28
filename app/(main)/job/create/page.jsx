@@ -45,6 +45,7 @@ export default function CreateJobPage() {
     salary_period: "yearly",
     is_easy_apply: false,
     external_apply_url: "",
+    expires_at: "",
   });
 
   useEffect(() => {
@@ -117,6 +118,7 @@ export default function CreateJobPage() {
         salary_period: formData.salary_period,
         is_easy_apply: formData.is_easy_apply,
         external_apply_url: formData.external_apply_url,
+        expires_at: formData.expires_at || null,
         status,
       });
 
@@ -537,6 +539,16 @@ export default function CreateJobPage() {
         >
           Enable Easy Apply
         </Checkbox>
+
+        <TextField>
+          <Label>Expires At (Optional)</Label>
+          <Input
+            type="date"
+            fullWidth
+            value={formData.expires_at}
+            onChange={(e) => updateField("expires_at", e.target.value)}
+          />
+        </TextField>
       </div>
 
       <div className="flex items-center gap-2 pt-4">
