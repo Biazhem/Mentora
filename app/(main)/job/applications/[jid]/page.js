@@ -8,14 +8,13 @@ import {
   Table,
   Select,
   ListBox,
-  TextField,
-  Label,
-  Input,
   Description,
+  Alert,
 } from "@heroui/react";
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Trash } from "lucide-react";
 import { Modal } from "@heroui/react";
 import { File } from "lucide-react";
 
@@ -39,10 +38,14 @@ const STATUS_COLORS = {
 
 export default function JobApplicationsDetail({ params }) {
   const { jid } = use(params);
+  const router = useRouter();
   const [job, setJob] = useState(null);
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     async function fetchData() {
@@ -102,6 +105,29 @@ export default function JobApplicationsDetail({ params }) {
     }
   };
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await supabase
+        .from("job_applications")
+        .delete()
+        .eq("job_id", jid);
+
+      const { error } = await supabase
+        .from("jobs")
+        .delete()
+        .eq("id", jid);
+
+      if (error) throw error;
+
+      router.push("/job/applications");
+    } catch (err) {
+      console.error("Delete error:", err);
+      setMessage("Failed to delete job. Please try again.");
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="w-full flex mx-auto p-3 md:p-6 flex-col gap-4">
@@ -128,6 +154,12 @@ export default function JobApplicationsDetail({ params }) {
         Back to Applications
       </Link>
 
+      {message && (
+        <Alert color="warning" className="mb-2">
+          {message}
+        </Alert>
+      )}
+
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl lg:text-3xl font-bold mb-2">{job.title}</h1>
@@ -139,6 +171,35 @@ export default function JobApplicationsDetail({ params }) {
             </Chip>
           </div>
         </div>
+        <Modal open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+          <Button variant="danger-soft" color="danger">
+            <Trash className="size-4" />
+            Delete Job
+          </Button>
+          <Modal.Backdrop>
+            <Modal.Container>
+              <Modal.Dialog>
+                <Modal.CloseTrigger />
+                <Modal.Header>
+                  <Modal.Heading>Delete Job</Modal.Heading>
+                </Modal.Header>
+                <Modal.Body>
+                  <p>Are you sure you want to delete <strong>{job.title}</strong>? This will also remove all {applications.length} applications. This action cannot be undone.</p>
+                </Modal.Body>
+                <Modal.Footer>
+                  <Button slot="close" variant="secondary">Cancel</Button>
+                  <Button
+                    color="danger"
+                    onClick={handleDelete}
+                    isLoading={deleting}
+                  >
+                    Delete Job & Applications
+                  </Button>
+                </Modal.Footer>
+              </Modal.Dialog>
+            </Modal.Container>
+          </Modal.Backdrop>
+        </Modal>
       </div>
 
       {applications.length === 0 ? (

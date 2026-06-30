@@ -22,12 +22,20 @@ export default function JobApplicationsPage() {
       setLoading(true);
       const { data: jobData } = await supabase
         .from("jobs")
-        .select("id, title, job_type, status, applicants_count, created_at")
+        .select("id, title, job_type, status, applicants_count, created_at, expires_at")
         .eq("org_id", selectedOrganizationId)
         .order("created_at", { ascending: false });
 
       if (jobData) {
-        setJobs(jobData);
+        const now = new Date();
+        const sorted = [...jobData].sort((a, b) => {
+          const aExpired = a.expires_at && new Date(a.expires_at) < now;
+          const bExpired = b.expires_at && new Date(b.expires_at) < now;
+          if (aExpired && !bExpired) return 1;
+          if (!aExpired && bExpired) return -1;
+          return 0;
+        });
+        setJobs(sorted);
       }
       setLoading(false);
     }
@@ -86,6 +94,11 @@ export default function JobApplicationsPage() {
                   <Chip size="sm" variant={job.status === "active" ? "soft" : "secondary"} color={job.status === "active" ? "success" : "default"}>
                     {job.status}
                   </Chip>
+                  {job.expires_at && new Date(job.expires_at) < new Date() && (
+                    <Chip size="sm" color="danger" variant="soft">
+                      Expired
+                    </Chip>
+                  )}
                   <span className="text-xs text-muted">
                     Posted {new Date(job.created_at).toLocaleDateString()}
                   </span>

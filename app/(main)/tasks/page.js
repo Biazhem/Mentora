@@ -1,43 +1,208 @@
 "use client";
 
-import { useState } from "react";
-import { Label, ListBox, Select } from "@heroui/react";
-import { X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
+import { supabase } from "@/lib/supabase";
+import { useOrgSelectorStore } from "@/stores/org-selector";
+import {
+  Label,
+  ListBox,
+  Select,
+  TextField,
+  Input,
+  TextArea,
+  Description,
+  Alert,
+  Avatar,
+  Surface,
+  ModalHeader,
+} from "@heroui/react";
+import { X, Plus } from "lucide-react";
 import { Separator } from "@heroui/react";
-import { tasks } from "@/config/data";
 import { Search, SlidersHorizontal, Trash } from "lucide-react";
-
 import { Card, Chip, Button, InputGroup } from "@heroui/react";
-
-import { DateRangePicker, DateField, RangeCalendar } from "@heroui/react";
+import { Modal } from "@heroui/react";
 
 export default function TasksPage() {
+  const { user } = useUser();
+  const selectedOrganizationId = useOrgSelectorStore(
+    (s) => s.selectedOrganizationId,
+  );
+  const members = useOrgSelectorStore((s) => s.members);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
-  // HeroUI format
-  const [dateRange, setDateRange] = useState({
-    start: null,
-    end: null,
+  const [newTask, setNewTask] = useState({
+    title: "",
+    description: "",
+    status: "pending",
+    start_date: "",
+    end_date: "",
+    assignees: new Set(),
   });
 
-  const tasksData = tasks;
+  useEffect(() => {
+    async function checkAdmin() {
+      if (!user || !selectedOrganizationId) {
+        setIsAdmin(false);
+        return;
+      }
 
-  // Filter logic
-  const filteredTasks = tasksData.filter((task) => {
-    const taskStart = new Date(task.startDate);
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .single();
 
+      if (!userData) {
+        setIsAdmin(false);
+        return;
+      }
+
+      const { data: memberData } = await supabase
+        .from("organization_members")
+        .select("role")
+        .eq("organization_id", selectedOrganizationId)
+        .eq("user_id", userData.id)
+        .maybeSingle();
+
+      setIsAdmin(memberData?.role === "admin");
+    }
+
+    checkAdmin();
+  }, [user, selectedOrganizationId]);
+
+  useEffect(() => {
+    async function getCurrentUser() {
+      if (!user) return;
+      const { data } = await supabase
+        .from("users")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .single();
+      if (data) setCurrentUserId(data.id);
+    }
+    getCurrentUser();
+  }, [user]);
+
+  useEffect(() => {
+    async function fetchTasks() {
+      if (!selectedOrganizationId) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      const { data: taskData } = await supabase
+        .from("tasks")
+        .select("*, task_assignees(user_id, users(name, email, pic))")
+        .eq("org_id", selectedOrganizationId)
+        .order("created_at", { ascending: false });
+
+      if (taskData) {
+        const enriched = taskData.map((task) => ({
+          ...task,
+          assignee_details:
+            task.task_assignees?.map((ta) => ta.users).filter(Boolean) || [],
+        }));
+        setTasks(enriched);
+      }
+      setLoading(false);
+    }
+
+    fetchTasks();
+  }, [selectedOrganizationId]);
+
+  const updateNewTask = (field, value) => {
+    setNewTask((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleAssigneeChange = (keys) => {
+    setNewTask((prev) => ({ ...prev, assignees: keys }));
+  };
+
+  const handleStatusChange = async (taskId, newStatus) => {
+    const { error } = await supabase
+      .from("tasks")
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq("id", taskId);
+
+    if (!error) {
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)),
+      );
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!newTask.title || !selectedOrganizationId) return;
+
+    setCreating(true);
+    try {
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .single();
+
+      if (!userData) return;
+
+      const { data: taskData, error } = await supabase
+        .from("tasks")
+        .insert({
+          org_id: selectedOrganizationId,
+          created_by: userData.id,
+          title: newTask.title,
+          description: newTask.description,
+          status: newTask.status,
+          start_date: newTask.start_date || null,
+          end_date: newTask.end_date || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (newTask.assignees.size > 0 && taskData) {
+        const assigneeRows = Array.from(newTask.assignees).map((userId) => ({
+          task_id: taskData.id,
+          user_id: userId,
+        }));
+
+        await supabase.from("task_assignees").insert(assigneeRows);
+      }
+
+      setTasks((prev) => [{ ...taskData, assignee_details: [] }, ...prev]);
+      setNewTask({
+        title: "",
+        description: "",
+        status: "pending",
+        start_date: "",
+        end_date: "",
+        assignees: new Set(),
+      });
+      setCreateModalOpen(false);
+    } catch (err) {
+      console.error("Create task error:", err);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const filteredTasks = tasks.filter((task) => {
     const statusMatch = statusFilter === "all" || task.status === statusFilter;
-
-    const rangeMatch =
-      !dateRange?.start ||
-      !dateRange?.end ||
-      (taskStart >= dateRange.start && taskStart <= dateRange.end);
     const searchMatch =
       task.title.toLowerCase().includes(search.toLowerCase()) ||
-      task.description.toLowerCase().includes(search.toLowerCase());
-
-    return statusMatch && rangeMatch && searchMatch;
+      (task.description &&
+        task.description.toLowerCase().includes(search.toLowerCase()));
+    return statusMatch && searchMatch;
   });
 
   return (
@@ -48,6 +213,12 @@ export default function TasksPage() {
           Track progress and manage deliverables across your workflow
         </p>
       </div>
+
+      {!selectedOrganizationId && (
+        <Alert color="warning">
+          Select an organization from the header to view tasks.
+        </Alert>
+      )}
 
       <div className="mb-8 flex justify-between gap-4 flex-wrap">
         <InputGroup>
@@ -62,179 +233,396 @@ export default function TasksPage() {
           />
         </InputGroup>
 
-        <div className="flex justify-between items-center gap-4 flex-wrap">
-          <Button variant="secondary">
-            <SlidersHorizontal />
-            Filter
-          </Button>
-          
-
-        {/* Status Filter */}
+        <div className="flex items-center gap-3 flex-wrap">
           <Select
             className="w-45"
             placeholder="Select status"
             selectedKeys={statusFilter ? [statusFilter] : []}
             onSelectionChange={(keys) => {
-              const value = Array.from(keys)[0];
+              const value = keys instanceof Set ? Array.from(keys)[0] : keys;
               setStatusFilter(value || "all");
             }}
           >
-
             <Select.Trigger>
               <Select.Value />
               <Select.Indicator />
             </Select.Trigger>
-
             <Select.Popover>
               <ListBox>
                 <ListBox.Item id="all" textValue="All Status">
                   All Status
                   <ListBox.ItemIndicator />
                 </ListBox.Item>
-
-                <ListBox.Item id="Pending" textValue="Pending">
+                <ListBox.Item id="pending" textValue="Pending">
                   Pending
                   <ListBox.ItemIndicator />
                 </ListBox.Item>
-
-                <ListBox.Item id="In Progress" textValue="In Progress">
-                  In Progress
+                <ListBox.Item id="completed" textValue="Completed">
+                  Completed
                   <ListBox.ItemIndicator />
                 </ListBox.Item>
-
-                <ListBox.Item id="Completed" textValue="Completed">
-                  Completed
+                <ListBox.Item id="incomplete" textValue="Incomplete">
+                  Incomplete
                   <ListBox.ItemIndicator />
                 </ListBox.Item>
               </ListBox>
             </Select.Popover>
           </Select>
 
-          {/* Date Range Filter (HeroUI) */}
-          <div className="flex gap-2 items-center">
-            <DateRangePicker value={dateRange} onChange={setDateRange}>
-              <DateField.Group>
-                <DateField.InputContainer>
-                  <DateField.Input slot="start">
-                    {(segment) => <DateField.Segment segment={segment} />}
-                  </DateField.Input>
-
-                  <DateRangePicker.RangeSeparator />
-
-                  <DateField.Input slot="end">
-                    {(segment) => <DateField.Segment segment={segment} />}
-                  </DateField.Input>
-                </DateField.InputContainer>
-
-                <DateField.Suffix>
-                  <DateRangePicker.Trigger>
-                    <DateRangePicker.TriggerIndicator />
-                  </DateRangePicker.Trigger>
-                </DateField.Suffix>
-              </DateField.Group>
-
-              <DateRangePicker.Popover>
-                <RangeCalendar aria-label="Filter tasks by date range">
-                  <RangeCalendar.Header>
-                    <RangeCalendar.YearPickerTrigger>
-                      <RangeCalendar.YearPickerTriggerHeading />
-                      <RangeCalendar.YearPickerTriggerIndicator />
-                    </RangeCalendar.YearPickerTrigger>
-
-                    <RangeCalendar.NavButton slot="previous" />
-                    <RangeCalendar.NavButton slot="next" />
-                  </RangeCalendar.Header>
-
-                  <RangeCalendar.Grid>
-                    <RangeCalendar.GridHeader>
-                      {(day) => (
-                        <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>
-                      )}
-                    </RangeCalendar.GridHeader>
-
-                    <RangeCalendar.GridBody>
-                      {(date) => <RangeCalendar.Cell date={date} />}
-                    </RangeCalendar.GridBody>
-                  </RangeCalendar.Grid>
-                </RangeCalendar>
-              </DateRangePicker.Popover>
-            </DateRangePicker>
-
-            {/* Clear Button */}
-            {dateRange?.start && (
-              <Button
-                variant="danger-soft"
-                onClick={() => setDateRange({ start: null, end: null })}
-              >
-                <X />
-                Clear
+          {isAdmin && (
+            <Modal open={createModalOpen} onOpenChange={setCreateModalOpen}>
+              <Button>
+                <Plus className="size-4" />
+                Create
               </Button>
-            )}
-          </div>
+              <Modal.Backdrop>
+                <Modal.Container>
+                  <Modal.Dialog>
+                    <Modal.CloseTrigger />
+                    <Modal.Header>
+                      <Modal.Heading>Create Task</Modal.Heading>
+                    </Modal.Header>
+                    <Modal.Body>
+                      <div className="space-y-3">
+                        <TextField>
+                          <Label>Title *</Label>
+                          <Input
+                            placeholder="Task title"
+                            fullWidth
+                            value={newTask.title}
+                            onChange={(e) =>
+                              updateNewTask("title", e.target.value)
+                            }
+                          />
+                        </TextField>
+                        <TextField>
+                          <Label>Description</Label>
+                          <TextArea
+                            placeholder="Task description"
+                            rows={3}
+                            fullWidth
+                            value={newTask.description}
+                            onChange={(e) =>
+                              updateNewTask("description", e.target.value)
+                            }
+                          />
+                        </TextField>
+                        <div className="grid grid-cols-3 gap-3">
+                          <TextField>
+                            <Label>Status</Label>
+                            <Select
+                              placeholder="Select status"
+                              selectedKeys={[newTask.status]}
+                              onSelectionChange={(keys) => {
+                                const value =
+                                  keys instanceof Set
+                                    ? Array.from(keys)[0]
+                                    : keys;
+                                updateNewTask("status", value || "pending");
+                              }}
+                            >
+                              <Select.Trigger>
+                                <Select.Value />
+                                <Select.Indicator />
+                              </Select.Trigger>
+                              <Select.Popover>
+                                <ListBox>
+                                  <ListBox.Item
+                                    id="pending"
+                                    textValue="Pending"
+                                  >
+                                    Pending
+                                    <ListBox.ItemIndicator />
+                                  </ListBox.Item>
+                                  <ListBox.Item
+                                    id="completed"
+                                    textValue="Completed"
+                                  >
+                                    Completed
+                                    <ListBox.ItemIndicator />
+                                  </ListBox.Item>
+                                  <ListBox.Item
+                                    id="incomplete"
+                                    textValue="Incomplete"
+                                  >
+                                    Incomplete
+                                    <ListBox.ItemIndicator />
+                                  </ListBox.Item>
+                                </ListBox>
+                              </Select.Popover>
+                            </Select>
+                          </TextField>
+                          <TextField>
+                            <Label>Start Date</Label>
+                            <Input
+                              type="date"
+                              fullWidth
+                              value={newTask.start_date}
+                              onChange={(e) =>
+                                updateNewTask("start_date", e.target.value)
+                              }
+                            />
+                          </TextField>
+                          <TextField>
+                            <Label>End Date</Label>
+                            <Input
+                              type="date"
+                              fullWidth
+                              value={newTask.end_date}
+                              onChange={(e) =>
+                                updateNewTask("end_date", e.target.value)
+                              }
+                            />
+                          </TextField>
+                        </div>
+                        <div>
+                          <Label className="mb-2 block">Assignees</Label>
+                          <Surface className="rounded-2xl">
+                            <ListBox
+                              aria-label="Assign members"
+                              selectionMode="multiple"
+                              selectedKeys={newTask.assignees}
+                              onSelectionChange={handleAssigneeChange}
+                            >
+                              {members.map((member) => (
+                                <ListBox.Item
+                                  key={member.id}
+                                  id={member.id}
+                                  textValue={member.name || "Unknown"}
+                                >
+                                  <Avatar size="sm">
+                                    {member.pic ? (
+                                      <Avatar.Image
+                                        src={member.pic}
+                                        alt={member.name}
+                                      />
+                                    ) : null}
+                                    <Avatar.Fallback>
+                                      {member.name
+                                        ?.split(" ")
+                                        .map((n) => n[0])
+                                        .join("")
+                                        .toUpperCase() || "?"}
+                                    </Avatar.Fallback>
+                                  </Avatar>
+                                  <div className="flex flex-col">
+                                    <Label>{member.name || "Unknown"}</Label>
+                                    <Description className="text-xs">
+                                      {member.email || ""}
+                                    </Description>
+                                  </div>
+                                  <ListBox.ItemIndicator />
+                                </ListBox.Item>
+                              ))}
+                            </ListBox>
+                          </Surface>
+                        </div>
+                      </div>
+                    </Modal.Body>
+                    <Modal.Footer>
+                      <Button slot="close" variant="secondary">
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleCreate}
+                        isLoading={creating}
+                        isDisabled={!newTask.title}
+                      >
+                        Create Task
+                      </Button>
+                    </Modal.Footer>
+                  </Modal.Dialog>
+                </Modal.Container>
+              </Modal.Backdrop>
+            </Modal>
+          )}
         </div>
       </div>
 
-      {/* Tasks List */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredTasks.map((task) => (
-          <Card key={task.id}>
-            <Card.Header>
-              <Card.Title>{task.title}</Card.Title>
-            </Card.Header>
+      {loading ? (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="animate-pulse rounded-xl bg-accent-soft-hover p-4 space-y-3"
+            >
+              <div className="h-5 w-40 bg-background-secondary rounded" />
+              <div className="h-3 w-full bg-background-secondary rounded" />
+              <div className="h-6 w-20 bg-background-secondary rounded" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredTasks.map((task) => (
+            <Modal>
+              <Modal.Trigger>
+                <Card key={task.id}>
+                  <Card.Header>
+                    <Card.Title>{task.title}</Card.Title>
+                  </Card.Header>
+                  <Card.Content className="space-y-3">
+                    {task.description && (
+                      <div className="text-sm line-clamp-1">
+                        {task.description}
+                      </div>
+                    )}
+                    <div className="w-full flex gap-2 items-center flex-wrap">
+                      <Chip
+                        color={
+                          task.status === "completed"
+                            ? "success"
+                            : task.status === "incomplete"
+                              ? "danger"
+                              : "accent"
+                        }
+                        size="sm"
+                      >
+                        {task.status}
+                      </Chip>
+                      {task.start_date && (
+                        <Chip size="sm" variant="secondary">
+                          {new Date(task.start_date).toLocaleDateString()}
+                        </Chip>
+                      )}
+                      -
+                      {task.end_date && (
+                        <Chip size="sm" variant="secondary">
+                          {new Date(task.end_date).toLocaleDateString()}
+                        </Chip>
+                      )}
+                    </div>
+                  </Card.Content>
+                  <Card.Footer className="flex flex-col items-start gap-2">
+                    {task.assignee_details?.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        {task.assignee_details
+                          .slice(0, 3)
+                          .map((assignee, idx) => (
+                            <Avatar key={idx} size="sm" className="size-6">
+                              {assignee.pic ? (
+                                <Avatar.Image
+                                  src={assignee.pic}
+                                  alt={assignee.name}
+                                />
+                              ) : null}
+                              <Avatar.Fallback className="text-[10px]">
+                                {assignee.name
+                                  ?.split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .toUpperCase() || "?"}
+                              </Avatar.Fallback>
+                            </Avatar>
+                          ))}
+                        {task.assignee_details.length > 3 && (
+                          <span className="text-xs text-muted">
+                            +{task.assignee_details.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
 
-            <Card.Content className="space-y-3">
-              <div className="text-sm line-clamp-1">{task.description}</div>
-
-              <div className="w-full flex gap-2 items-center">
-                <Chip
-                  color={
-                    task.status === "Completed"
-                      ? "success"
-                      : task.status === "In Progress"
-                        ? "default"
-                        : "danger"
-                  }
-                  size="sm"
-                >
-                  {task.status}
-                </Chip>
-                <Separator orientation="vertical" />
-                <Chip>{task.startDate}</Chip> - <Chip>{task.dueDate}</Chip>
-              </div>
-            </Card.Content>
-
-            <Card.Footer className="flex flex-col items-start gap-2">
-              <span>Assignees</span>
-
-              {/* <AvatarGroup>
-                <Avatar size="sm">
-                  <AvatarImage
-                    src="https://github.com/shadcn.png"
-                    alt="@shadcn"
-                  />
-                  <AvatarFallback>CN</AvatarFallback>
-                </Avatar>
-
-                <Avatar size="sm">
-                  <AvatarImage
-                    src="https://github.com/maxleiter.png"
-                    alt="@maxleiter"
-                  />
-                  <AvatarFallback>LR</AvatarFallback>
-                </Avatar>
-
-                <Avatar size="sm">
-                  <AvatarImage
-                    src="https://github.com/evilrabbit.png"
-                    alt="@evilrabbit"
-                  />
-                  <AvatarFallback>ER</AvatarFallback>
-                </Avatar>
-              </AvatarGroup> */}
-            </Card.Footer>
-          </Card>
-        ))}
-      </div>
+                    <span className="text-xs text-muted">
+                      Created {new Date(task.created_at).toLocaleDateString()}
+                    </span>
+                  </Card.Footer>
+                </Card>
+              </Modal.Trigger>
+              <Modal.Backdrop>
+                <Modal.Container>
+                  <Modal.Dialog>
+                    <Modal.CloseTrigger />
+                    <Modal.Header>
+                      <Modal.Heading>{task.title}</Modal.Heading>
+                    </Modal.Header>
+                    <Modal.Body>
+                      <p>{task.description}</p>
+                      <div className="w-full flex gap-2 items-center flex-wrap">
+                        <Chip
+                          color={
+                            task.status === "completed"
+                              ? "success"
+                              : task.status === "incomplete"
+                                ? "danger"
+                                : "accent"
+                          }
+                          variant="soft"
+                          size="sm"
+                        >
+                          {task.status}
+                        </Chip>
+                        {task.start_date && (
+                          <Chip size="sm" variant="secondary">
+                            {new Date(task.start_date).toLocaleDateString()}
+                          </Chip>
+                        )}
+                        -
+                        {task.end_date && (
+                          <Chip size="sm" variant="secondary">
+                            {new Date(task.end_date).toLocaleDateString()}
+                          </Chip>
+                        )}
+                      </div>
+                    </Modal.Body>
+                    <Modal.Footer>
+                      {currentUserId &&
+                        task.task_assignees?.some(
+                          (ta) => ta.user_id === currentUserId,
+                        ) && (
+                          <Select
+                            className="w-40"
+                            placeholder="Status"
+                            selectedKeys={[task.status]}
+                            onSelectionChange={(keys) => {
+                              const value =
+                                keys instanceof Set
+                                  ? Array.from(keys)[0]
+                                  : keys;
+                              if (value) handleStatusChange(task.id, value);
+                            }}
+                          >
+                            <Select.Trigger>
+                              <Select.Value />
+                              <Select.Indicator />
+                            </Select.Trigger>
+                            <Select.Popover>
+                              <ListBox>
+                                <ListBox.Item id="pending" textValue="Pending">
+                                  Pending
+                                  <ListBox.ItemIndicator />
+                                </ListBox.Item>
+                                <ListBox.Item
+                                  id="completed"
+                                  textValue="Completed"
+                                >
+                                  Completed
+                                  <ListBox.ItemIndicator />
+                                </ListBox.Item>
+                                <ListBox.Item
+                                  id="incomplete"
+                                  textValue="Incomplete"
+                                >
+                                  Incomplete
+                                  <ListBox.ItemIndicator />
+                                </ListBox.Item>
+                              </ListBox>
+                            </Select.Popover>
+                          </Select>
+                        )}
+                    </Modal.Footer>
+                  </Modal.Dialog>
+                </Modal.Container>
+              </Modal.Backdrop>
+            </Modal>
+          ))}
+          {filteredTasks.length === 0 && (
+            <p className="col-span-3 text-center text-muted py-12">
+              No tasks found.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

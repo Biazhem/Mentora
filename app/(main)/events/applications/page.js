@@ -3,245 +3,133 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { supabase } from "@/lib/supabase";
-import {
-  Table,
-  Chip,
-  Button,
-  Alert,
-  Avatar,
-  InputGroup,
-  ListBox,
-  Select,
-} from "@heroui/react";
-import { Search, Trash } from "lucide-react";
+import { useOrgSelectorStore } from "@/stores/org-selector";
+import { Alert, Button, Chip } from "@heroui/react";
+import { Users } from "lucide-react";
 import Link from "next/link";
 
-const STATUS_COLORS = {
-  registered: "primary",
-  cancelled: "danger",
-  attended: "success",
-};
+function getEventStatus(startDate, endDate) {
+  const now = new Date();
+  const start = startDate ? new Date(startDate) : null;
+  const end = endDate ? new Date(endDate) : null;
 
-export default function EventRegistrationsPage() {
-  const { user, isLoaded } = useUser();
-  const [registrations, setRegistrations] = useState([]);
+  if (start && now >= start && (!end || now <= end)) return { label: "Ongoing", color: "success" };
+  if (end && now > end) return { label: "Completed", color: "default" };
+  if (start && now < start) return { label: "Scheduled", color: "warning" };
+  return { label: "Upcoming", color: "secondary" };
+}
+
+export default function EventApplicationsPage() {
+  const selectedOrganizationId = useOrgSelectorStore((s) => s.selectedOrganizationId);
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [debugInfo, setDebugInfo] = useState("");
 
   useEffect(() => {
-    async function fetchRegistrations() {
-      if (!isLoaded || !user) return;
+    async function fetchEvents() {
+      if (!selectedOrganizationId) {
+        setLoading(false);
+        return;
+      }
 
       setLoading(true);
-      try {
-        const { data: userData, error: userErr } = await supabase
-          .from("users")
-          .select("id, clerk_id")
-          .eq("clerk_id", user.id)
-          .single();
+      const { data: eventData } = await supabase
+        .from("events")
+        .select("id, title, start_date, end_date, location, type, org_id")
+        .eq("org_id", selectedOrganizationId)
+        .order("start_date", { ascending: false });
 
-        if (userErr || !userData) {
-          setDebugInfo("User not found in users table");
-          setLoading(false);
-          return;
-        }
+      if (eventData && eventData.length > 0) {
+        const eventIds = eventData.map((e) => e.id);
 
-        const res = await fetch(`/api/events/registrations?user_id=${userData.id}`);
-        const data = await res.json();
+        const { data: regCounts } = await supabase
+          .from("event_registrations")
+          .select("event_id")
+          .in("event_id", eventIds)
+          .eq("status", "registered");
 
-        if (data.registrations) {
-          setRegistrations(data.registrations);
-          setDebugInfo(`Found ${data.registrations.length} registrations`);
-        } else {
-          setDebugInfo(data.error || "No registrations found");
-        }
-      } catch (err) {
-        setDebugInfo(`Error: ${err.message}`);
-      } finally {
-        setLoading(false);
+        const counts = {};
+        (regCounts || []).forEach((r) => {
+          counts[r.event_id] = (counts[r.event_id] || 0) + 1;
+        });
+
+        const enriched = eventData.map((e) => ({
+          ...e,
+          registrant_count: counts[e.id] || 0,
+        }));
+
+        setEvents(enriched);
       }
+      setLoading(false);
     }
 
-    fetchRegistrations();
-  }, [isLoaded, user]);
+    fetchEvents();
+  }, [selectedOrganizationId]);
 
-  const handleCancel = async (registrationId) => {
-    await fetch("/api/events/registrations", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: registrationId, status: "cancelled" }),
-    });
-
-    setRegistrations((prev) =>
-      prev.map((reg) =>
-        reg.id === registrationId ? { ...reg, status: "cancelled" } : reg
-      )
+  if (!selectedOrganizationId) {
+    return (
+      <div className="py-12 px-4">
+        <Alert color="warning">Select an organization from the header to view event applications.</Alert>
+      </div>
     );
-  };
-
-  const filteredRegistrations = registrations.filter((reg) => {
-    const matchesSearch =
-      reg.event?.title?.toLowerCase().includes(search.toLowerCase()) ||
-      reg.org?.org_name?.toLowerCase().includes(search.toLowerCase()) ||
-      reg.event?.location?.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || reg.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  }
 
   return (
     <div className="py-12 px-4">
       <div className="mb-4">
-        <h1 className="text-2xl font-semibold text-left">My Event Registrations</h1>
-        <p className="text-sm text-muted">
-          Track the events you've registered for
-        </p>
-      </div>
-
-      {debugInfo && (
-        <Alert color="info" className="mb-4">
-          {debugInfo}
-        </Alert>
-      )}
-
-      <div className="mb-8 flex justify-between gap-3 flex-wrap">
-        <InputGroup>
-          <InputGroup.Prefix>
-            <Search className="size-4" />
-          </InputGroup.Prefix>
-          <InputGroup.Input
-            placeholder="Search events"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-fit"
-          />
-        </InputGroup>
-
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            isIconOnly
-            variant="danger-soft"
-            onPress={() => setStatusFilter("all")}
-          >
-            <Trash />
-          </Button>
-          <Select
-            onValueChange={setStatusFilter}
-            defaultValue="all"
-            className="min-w-[140px]"
-          >
-            <Select.Trigger>
-              <Select.Value />
-              <Select.Indicator />
-            </Select.Trigger>
-            <Select.Popover>
-              <ListBox>
-                <ListBox.Item value="all">All Status</ListBox.Item>
-                <ListBox.Item value="registered">Registered</ListBox.Item>
-                <ListBox.Item value="attended">Attended</ListBox.Item>
-                <ListBox.Item value="cancelled">Cancelled</ListBox.Item>
-              </ListBox>
-            </Select.Popover>
-          </Select>
-          <Link href="/events">
-            <Button>Browse Events</Button>
-          </Link>
-        </div>
+        <h1 className="text-2xl font-semibold text-left">Event Registrations</h1>
+        <p className="text-sm text-muted">Manage registrations for your organization's events</p>
       </div>
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="grid gap-4 md:grid-cols-2 mt-6">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse h-16 bg-accent-soft-hover rounded" />
+            <div key={i} className="animate-pulse rounded-xl bg-accent-soft-hover p-4 space-y-3">
+              <div className="h-5 w-48 bg-background-secondary rounded" />
+              <div className="h-3 w-32 bg-background-secondary rounded" />
+              <div className="h-6 w-24 bg-background-secondary rounded" />
+            </div>
           ))}
         </div>
-      ) : registrations.length === 0 ? (
-        <Alert color="info">
-          You haven't registered for any events yet.{" "}
-          <Link href="/events" className="underline">Browse events</Link>
-        </Alert>
+      ) : events.length === 0 ? (
+        <p className="text-muted py-12 text-center">No events found for this organization.</p>
       ) : (
-        <Table>
-          <Table.ScrollContainer>
-            <Table.Content aria-label="Event registrations" className="min-w-[700px]">
-              <Table.Header>
-                <Table.Column isRowHeader>Event</Table.Column>
-                <Table.Column>Organization</Table.Column>
-                <Table.Column>Date</Table.Column>
-                <Table.Column>Location</Table.Column>
-                <Table.Column>Status</Table.Column>
-                <Table.Column className="justify-end">Actions</Table.Column>
-              </Table.Header>
-              <Table.Body>
-                {filteredRegistrations.map((reg) => (
-                  <Table.Row key={reg.id}>
-                    <Table.Cell>
-                      <div className="flex items-center gap-2">
-                        <Avatar size="sm">
-                          {reg.org?.image_url ? (
-                            <Avatar.Image src={reg.org.image_url} alt={reg.org.org_name} />
-                          ) : null}
-                          <Avatar.Fallback>
-                            {reg.org?.org_name?.[0]?.toUpperCase() || "E"}
-                          </Avatar.Fallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-sm">{reg.event?.title || "Unknown"}</p>
-                          <p className="text-xs text-muted">{reg.event?.type}</p>
-                        </div>
-                      </div>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <span className="text-sm">{reg.org?.org_name || "-"}</span>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <div className="text-sm">
-                        <p>{reg.event?.start_date || "-"}</p>
-                        {reg.event?.end_date && (
-                          <p className="text-xs text-muted">to {reg.event.end_date}</p>
-                        )}
-                      </div>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <span className="text-sm">{reg.event?.location || "TBA"}</span>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Chip
-                        color={STATUS_COLORS[reg.status] || "default"}
-                        variant="soft"
-                        size="sm"
-                      >
-                        {reg.status}
+        <div className="grid gap-4 md:grid-cols-2">
+          {events.map((event) => {
+            const eventStatus = getEventStatus(event.start_date, event.end_date);
+            return (
+              <Link key={event.id} href={`/events/applications/${event.id}`}>
+                <div className="rounded-xl border p-4 hover:shadow-md transition cursor-pointer">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-semibold">{event.title}</h3>
+                      <p className="text-sm text-muted">{event.type}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Chip size="sm" color={eventStatus.color} variant="soft">
+                        {eventStatus.label}
                       </Chip>
-                    </Table.Cell>
-                    <Table.Cell className="flex items-center justify-end gap-1">
-                      {reg.status === "registered" && (
-                        <Button
-                          size="sm"
-                          variant="danger-soft"
-                          onPress={() => handleCancel(reg.id)}
-                        >
-                          Cancel
-                        </Button>
-                      )}
-                      {!(reg.status === "registered") && (
-                        <Button
-                          size="sm"
-                          variant="danger-soft"
-                          isDisabled
-                        >
-                          Canceled
-                        </Button>
-                      )}
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table.Content>
-          </Table.ScrollContainer>
-        </Table>
+                      <Chip color="primary" variant="soft">
+                        <div className="flex items-center gap-1">
+                          <Users className="size-3" />
+                          {event.registrant_count}
+                        </div>
+                      </Chip>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    <Chip size="sm" variant="secondary">
+                      {event.start_date || "TBA"}
+                      {event.end_date ? ` to ${event.end_date}` : ""}
+                    </Chip>
+                    {event.location && (
+                      <Chip size="sm" variant="secondary">{event.location}</Chip>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
       )}
     </div>
   );

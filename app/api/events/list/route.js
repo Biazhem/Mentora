@@ -35,20 +35,19 @@ export async function GET(req) {
       org_name: orgMap[event.org_id] || "Unknown",
     }));
 
-    let registrations = [];
+    let registeredEvents = [];
     if (userId) {
       const { data: regData } = await supabaseAdmin
         .from("event_registrations")
-        .select("event_id")
-        .eq("user_id", userId)
-        .eq("status", "registered");
+        .select("event_id, status")
+        .eq("user_id", userId);
 
-      registrations = regData || [];
+      registeredEvents = regData || [];
     }
 
     return NextResponse.json({
       events: enriched,
-      registered_event_ids: registrations.map((r) => r.event_id),
+      registered_events: registeredEvents.map((r) => [r.event_id, r.status]),
     });
   } catch (err) {
     console.error("Events list error:", err);

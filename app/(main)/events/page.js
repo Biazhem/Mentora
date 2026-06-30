@@ -75,6 +75,17 @@ function EventLinks({ links }) {
   );
 }
 
+function getEventStatus(startDate, endDate) {
+  const now = new Date();
+  const start = startDate ? new Date(startDate) : null;
+  const end = endDate ? new Date(endDate) : null;
+
+  if (start && now >= start && (!end || now <= end)) return { label: "Ongoing", color: "success" };
+  if (end && now > end) return { label: "Completed", color: "default" };
+  if (start && now < start) return { label: "Scheduled", color: "warning" };
+  return { label: "Upcoming", color: "secondary" };
+}
+
 export default function EventsPage() {
   const { user } = useUser();
   const selectedOrganizationId = useOrgSelectorStore((s) => s.selectedOrganizationId);
@@ -83,7 +94,7 @@ export default function EventsPage() {
   const [events, setEvents] = useState([]);
   const [organizations, setOrganizations] = useState({});
   const [loading, setLoading] = useState(true);
-  const [registeredEvents, setRegisteredEvents] = useState(new Set());
+  const [registeredEvents, setRegisteredEvents] = useState(new Map());
   const [registering, setRegistering] = useState(null);
   const [message, setMessage] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
@@ -117,7 +128,7 @@ export default function EventsPage() {
         }
 
         if (data.registered_event_ids) {
-          setRegisteredEvents(new Set(data.registered_event_ids));
+          setRegisteredEvents(new Map(data.registered_events || []));
         }
       } catch (err) {
         console.error("Fetch events error:", err);
@@ -185,21 +196,22 @@ export default function EventsPage() {
         return;
       }
 
-      const { error } = await fetch("/api/events/registrations", {
+      const res = await fetch("/api/events/registrations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ event_id: eventId, user_id: userData.id }),
-      }).then((r) => r.json());
+      });
+      const data = await res.json();
 
-      if (error) {
-        if (error === "Already registered") {
+      if (data.error) {
+        if (data.error === "Already registered") {
           setMessage("You are already registered for this event.");
-          setRegisteredEvents((prev) => new Set([...prev, eventId]));
+          setRegisteredEvents((prev) => new Map([...prev, [eventId, "registered"]]));
         } else {
-          throw new Error(error);
+          throw new Error(data.error);
         }
       } else {
-        setRegisteredEvents((prev) => new Set([...prev, eventId]));
+        setRegisteredEvents((prev) => new Map([...prev, [eventId, "registered"]]));
         setMessage("Successfully registered for the event!");
       }
     } catch (err) {
@@ -250,9 +262,14 @@ export default function EventsPage() {
             className="w-fit"
           />
         </InputGroup>
-        <Link href="/events/applications">
-          <Button>Registered Events</Button>
+        <Link href="/events/my-reg">
+          <Button>My Registrations</Button>
         </Link>
+        {isAdmin && (
+          <Link href="/events/applications">
+            <Button variant="secondary">Manage Registrations</Button>
+          </Link>
+        )}
         </div>
 
         <div className="flex gap-2 flex-wrap">
@@ -338,10 +355,20 @@ export default function EventsPage() {
                         </Button>
                       </Card.Header>
                       <Card.Footer className="mt-auto flex gap-1 flex-wrap">
+                        {(() => {
+                          const eventStatus = getEventStatus(event.start_date, event.end_date);
+                          return <Chip size="sm" color={eventStatus.color} variant="soft">{eventStatus.label}</Chip>;
+                        })()}
                         {event.type && <Chip>{event.type}</Chip>}
                         {event.location && <Chip>{event.location}</Chip>}
-                        {event.start_date && <Chip>{event.start_date}</Chip>}
-                        {event.end_date && <Chip>{event.end_date}</Chip>}
+                        {registeredEvents.has(event.id) && (
+                          <Chip
+                            color={registeredEvents.get(event.id) === "cancelled" ? "danger" : "success"}
+                            variant="soft"
+                          >
+                            {registeredEvents.get(event.id) === "cancelled" ? "Canceled" : "Applied"}
+                          </Chip>
+                        )}
                       </Card.Footer>
                     </div>
                   </Card>
@@ -463,9 +490,15 @@ export default function EventsPage() {
                             Your Organization
                           </Button>
                         ) : registeredEvents.has(event.id) ? (
-                          <Button variant="secondary" isDisabled>
-                            Registered
-                          </Button>
+                          registeredEvents.get(event.id) === "cancelled" ? (
+                            <Button variant="danger-soft" isDisabled>
+                              Canceled
+                            </Button>
+                          ) : (
+                            <Button variant="secondary" isDisabled>
+                              Applied
+                            </Button>
+                          )
                         ) : (
                           <Button
                             variant="primary"
