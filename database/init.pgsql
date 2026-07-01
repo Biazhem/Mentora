@@ -191,6 +191,53 @@ CREATE TABLE public.mentorship_requests (
   CONSTRAINT mentorship_requests_pkey PRIMARY KEY (id),
   CONSTRAINT mentorship_requests_mentor_id_fkey FOREIGN KEY (mentor_id) REFERENCES public.mentors(id),
   CONSTRAINT mentorship_requests_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
-  CONSTRAINT mentorship_requests_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT unique_mentor_student UNIQUE (mentor_id, student_id)
+  CONSTRAINT mentorship_requests_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.mentor_teams (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  mentor_id uuid NOT NULL,
+  name text NOT NULL,
+  description text DEFAULT ''::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT mentor_teams_pkey PRIMARY KEY (id),
+  CONSTRAINT mentor_teams_mentor_id_fkey FOREIGN KEY (mentor_id) REFERENCES public.mentors(id)
+);
+CREATE TABLE public.team_members (
+  team_id uuid NOT NULL,
+  student_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  role text NOT NULL DEFAULT 'member'::text,
+  joined_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT team_members_pkey PRIMARY KEY (team_id, student_id),
+  CONSTRAINT team_members_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
+  CONSTRAINT team_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT team_members_team_id_fkey FOREIGN KEY (team_id) REFERENCES public.mentor_teams(id)
+);
+CREATE TABLE public.team_tasks (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  team_id uuid NOT NULL,
+  created_by uuid NOT NULL,
+  title text NOT NULL,
+  description text DEFAULT ''::text,
+  status text NOT NULL DEFAULT 'pending'::text,
+  start_date date,
+  end_date date,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT team_tasks_pkey PRIMARY KEY (id),
+  CONSTRAINT team_tasks_team_id_fkey FOREIGN KEY (team_id) REFERENCES public.mentor_teams(id),
+  CONSTRAINT team_tasks_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.team_task_assignees (
+  task_id uuid NOT NULL,
+  student_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  status text NOT NULL DEFAULT 'pending'::text,
+  completed_at timestamp with time zone,
+  assigned_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT team_task_assignees_pkey PRIMARY KEY (task_id, student_id),
+  CONSTRAINT team_task_assignees_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.team_tasks(id),
+  CONSTRAINT team_task_assignees_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
+  CONSTRAINT team_task_assignees_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );

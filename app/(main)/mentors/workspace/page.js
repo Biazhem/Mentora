@@ -1,29 +1,257 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
+import { supabase } from "@/lib/supabase";
 import {
   Button,
   InputGroup,
-  Select,
   Label,
-  ListBox,
   Description,
   Avatar,
+  TextField,
+  Input,
+  TextArea,
+  Alert,
 } from "@heroui/react";
-import Link from "next/link";
-import { SlidersHorizontal, Trash, Search } from "lucide-react";
-import { Card, Typography } from "@heroui/react";
+import { Search, Plus } from "lucide-react";
+import { Card } from "@heroui/react";
 import { Chip } from "@heroui/react";
 import { ProgressBar } from "@heroui/react";
+import { Modal } from "@heroui/react";
+import Link from "next/link";
+import { MentorStudentListBox } from "@/components/custom/mentor-student-listbox";
 
-export default function Page() {
+export default function WorkspacePage() {
+  const { user } = useUser();
+  const [teams, setTeams] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isMentorUser, setIsMentorUser] = useState(false);
+  const [isStudentUser, setIsStudentUser] = useState(false);
+  const [approvedStudents, setApprovedStudents] = useState([]);
+  const [newTeam, setNewTeam] = useState({ name: "", description: "", members: new Set() });
+  const [creating, setCreating] = useState(false);
+  const [mentorId, setMentorId] = useState(null);
+
+  useEffect(() => {
+    async function init() {
+      if (!user) return;
+
+      const loadTeams = async (teamRows) => {
+        if (!teamRows || teamRows.length === 0) {
+          setTeams([]);
+          return;
+        }
+
+        const enriched = await Promise.all(
+          teamRows.map(async (team) => {
+            const { count: memberCount } = await supabase
+              .from("team_members")
+              .select("*", { count: "exact", head: true })
+              .eq("team_id", team.id);
+
+            const { count: taskCount } = await supabase
+              .from("team_tasks")
+              .select("*", { count: "exact", head: true })
+              .eq("team_id", team.id);
+
+            const { count: completedCount } = await supabase
+              .from("team_tasks")
+              .select("*", { count: "exact", head: true })
+              .eq("team_id", team.id)
+              .eq("status", "completed");
+
+            const { data: memberRows } = await supabase
+              .from("team_members")
+              .select("user_id, users(name, pic)")
+              .eq("team_id", team.id)
+              .limit(3);
+
+            return {
+              ...team,
+              member_count: memberCount || 0,
+              task_count: taskCount || 0,
+              completed_count: completedCount || 0,
+              preview_members: memberRows || [],
+            };
+          })
+        );
+
+        setTeams(enriched);
+      };
+
+      const { data: mentorData } = await supabase
+        .from("mentors")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .maybeSingle();
+
+      const { data: studentData } = await supabase
+        .from("students")
+        .select("id, clerk_id, name")
+        .eq("clerk_id", user.id)
+        .maybeSingle();
+
+      if (studentData) {
+        setIsStudentUser(true);
+        setIsMentorUser(false);
+        setMentorId(null);
+
+        const { data: approvedReqs } = await supabase
+          .from("mentorship_requests")
+          .select("mentor_id")
+          .eq("student_id", studentData.id)
+          .eq("status", "approved");
+
+        const mentorIds = [...new Set((approvedReqs || []).map((r) => r.mentor_id).filter(Boolean))];
+
+        if (mentorIds.length === 0) {
+          setApprovedStudents([]);
+          setTeams([]);
+        } else {
+          const { data: teamData } = await supabase
+            .from("mentor_teams")
+            .select("*")
+            .in("mentor_id", mentorIds)
+            .order("created_at", { ascending: false });
+
+          await loadTeams(teamData || []);
+        }
+      } else if (mentorData) {
+        setIsMentorUser(true);
+        setIsStudentUser(false);
+        setMentorId(mentorData.id);
+
+        const { data: approvedReqs } = await supabase
+          .from("mentorship_requests")
+          .select(
+            "student_id, students(id, clerk_id, name, email, university, expertise, users!clerk_id(id, name, email, pic))"
+          )
+          .eq("mentor_id", mentorData.id)
+          .eq("status", "approved");
+
+        const studentList = (approvedReqs || [])
+          .map((r) => {
+            const student = r.students;
+            if (!student) return null;
+
+            return {
+              id: student.id,
+              userId: student.users?.id || null,
+              clerkId: student.clerk_id,
+              name: student.name,
+              email: student.email,
+              university: student.university,
+              expertise: student.expertise,
+              pic: student.users?.pic || null,
+            };
+          })
+          .filter(Boolean);
+
+        setApprovedStudents(studentList);
+
+        const { data: teamData } = await supabase
+          .from("mentor_teams")
+          .select("*")
+          .eq("mentor_id", mentorData.id)
+          .order("created_at", { ascending: false });
+
+        await loadTeams(teamData || []);
+      } else {
+        setIsMentorUser(false);
+        setIsStudentUser(false);
+        setApprovedStudents([]);
+        setTeams([]);
+      }
+
+      setLoading(false);
+    }
+
+    init();
+  }, [user]);
+
+  const handleCreateTeam = async () => {
+    if (!newTeam.name || !mentorId) return;
+
+    setCreating(true);
+    try {
+      const selectedStudents = Array.from(newTeam.members)
+        .map((studentId) =>
+          approvedStudents.find((student) => student.id === studentId)
+        )
+        .filter((student) => student && student.userId);
+
+      const { data: teamData, error } = await supabase
+        .from("mentor_teams")
+        .insert({
+          mentor_id: mentorId,
+          name: newTeam.name,
+          description: newTeam.description,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (selectedStudents.length > 0) {
+        const rows = selectedStudents.map((student) => ({
+          team_id: teamData.id,
+          student_id: student.id,
+          user_id: student.userId,
+          role: "member",
+        }));
+
+        await supabase.from("team_members").insert(rows);
+      }
+
+      setTeams((prev) => [
+        {
+          ...teamData,
+          member_count: selectedStudents.length,
+          task_count: 0,
+          completed_count: 0,
+          preview_members: selectedStudents.map((student) => ({
+            user_id: student.userId,
+            users: {
+              name: student.name,
+              pic: student.pic,
+            },
+          })),
+        },
+        ...prev,
+      ]);
+      setNewTeam({ name: "", description: "", members: new Set() });
+    } catch (err) {
+      console.error("Create team error:", err);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const progressPercent = (completed, total) => {
+    if (total === 0) return 0;
+    return Math.round((completed / total) * 100);
+  };
+
+  const canCreateTeams = isMentorUser && !isStudentUser;
+
   return (
     <div className="py-12 px-4">
       <div className="mb-4">
         <h1 className="text-2xl font-semibold text-left">My Workspace</h1>
         <p className="text-sm text-muted">
-          Manage tasks, teams and learn from mentors in worspace
+          {isStudentUser
+            ? "View teams created by your approved mentor and track assigned work."
+            : "Manage teams, tasks and mentor your students"}
         </p>
       </div>
+
+      {isStudentUser ? (
+        <Alert color="info" className="mb-6">
+          Student accounts can view approved mentor teams only. Team creation is
+          available from a mentor account.
+        </Alert>
+      ) : null}
 
       <div className="mb-8 flex justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
@@ -32,85 +260,149 @@ export default function Page() {
               <Search className="size-4" />
             </InputGroup.Prefix>
             <InputGroup.Input
-              placeholder="Search mentors by name, bio, field, or institute"
+              placeholder="Search teams"
               className="w-fit"
             />
           </InputGroup>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
-          <Select placeholder="Select organization">
-            <Select.Trigger>
-              <Select.Value className={"flex items-center gap-2 "} />
-              <Select.Indicator />
-            </Select.Trigger>
-            <Select.Popover>
-              <ListBox>
-                <ListBox.Item>
-                  <Avatar size="sm">
-                    <Avatar.Fallback>AB</Avatar.Fallback>
-                  </Avatar>
-                  <div className="flex flex-col">
-                    <Label>Ali</Label>
-                    <Description>Full Stack Eng..</Description>
-                  </div>
-                  <ListBox.ItemIndicator />
-                </ListBox.Item>
-              </ListBox>
-            </Select.Popover>
-          </Select>
-          <Button variant="secondary">
-            <SlidersHorizontal />
-            Filter
-          </Button>
+          {canCreateTeams ? (
+            <Modal>
+              <Button>
+                <Plus className="size-4" /> Create Team
+              </Button>
+              <Modal.Backdrop>
+                <Modal.Container>
+                  <Modal.Dialog>
+                    <Modal.CloseTrigger />
+                    <Modal.Header>
+                      <Modal.Icon className="bg-default text-foreground">
+                        <Plus className="size-5" />
+                      </Modal.Icon>
+                      <Modal.Heading>Create Team</Modal.Heading>
+                    </Modal.Header>
+                    <Modal.Body>
+                      <div className="space-y-3">
+                        <TextField>
+                          <Label>Team Name *</Label>
+                          <Input
+                            placeholder="e.g., Backend Team"
+                            fullWidth
+                            value={newTeam.name}
+                            onChange={(e) => setNewTeam((p) => ({ ...p, name: e.target.value }))}
+                          />
+                        </TextField>
+                        <TextField>
+                          <Label>Description</Label>
+                          <TextArea
+                            placeholder="Team description"
+                            rows={3}
+                            fullWidth
+                            value={newTeam.description}
+                            onChange={(e) => setNewTeam((p) => ({ ...p, description: e.target.value }))}
+                          />
+                        </TextField>
+                        <div>
+                          <Label className="mb-2 block">Add Members (optional)</Label>
+                          <MentorStudentListBox
+                            ariaLabel="Select mentor students"
+                            students={approvedStudents}
+                            selectedKeys={newTeam.members}
+                            onSelectionChange={(keys) =>
+                              setNewTeam((p) => ({ ...p, members: keys }))
+                            }
+                          />
+                        </div>
+                      </div>
+                    </Modal.Body>
+                    <Modal.Footer>
+                      <Button slot="close" variant="secondary">Cancel</Button>
+                      <Button
+                        slot="close"
+                        onClick={handleCreateTeam}
+                        isLoading={creating}
+                        isDisabled={!newTeam.name}
+                      >
+                        Create Team
+                      </Button>
+                    </Modal.Footer>
+                  </Modal.Dialog>
+                </Modal.Container>
+              </Modal.Backdrop>
+            </Modal>
+          ) : null}
         </div>
       </div>
-      <div className="flex gap-2">
-        <Link href="/mentors/workspace/teams/id">
-          <Card className="min-w-sm">
-            <Card.Header>
-              <div className="flex justify-between items-center">
-                <Card.Title>Team Backend</Card.Title>
-                <div className="flex items-center -space-x-4 *:ring-2 *:ring-background">
-                  <Avatar size="sm">
-                    <Avatar.Fallback>AB</Avatar.Fallback>
-                  </Avatar>
-                  <Avatar size="sm">
-                    <Avatar.Fallback>CD</Avatar.Fallback>
-                  </Avatar>
-                  <Avatar size="sm">
-                    <Avatar.Fallback>+6</Avatar.Fallback>
-                  </Avatar>
-                </div>
-              </div>
-            </Card.Header>
-            <Card.Content className="flex flex-col">
-              <Description>team for backend engineer students</Description>
-            </Card.Content>
-            <Card.Footer className="flex flex-col items-start gap-2">
-              <ProgressBar
-                aria-label="Revenue"
-                className="w-full"
-                maxValue={100}
-                minValue={0}
-                value={34}
-              >
-                <div className="flex items-center gap-1">
-                  <Label>Tasks</Label>
-                  <Chip size="sm">12/35</Chip>
-                </div>
-                <ProgressBar.Output />
-                <ProgressBar.Track>
-                  <ProgressBar.Fill />
-                </ProgressBar.Track>
-              </ProgressBar>
-            </Card.Footer>
-          </Card>
-        </Link>
-      </div>
-      <div className="mt-4">
-        <Typography.Heading level={3}>Students</Typography.Heading>
-        {/* Table for students */}
-      </div>
+
+      {loading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="animate-pulse rounded-xl bg-accent-soft-hover p-4 space-y-3">
+              <div className="h-5 w-40 bg-background-secondary rounded" />
+              <div className="h-3 w-full bg-background-secondary rounded" />
+              <div className="h-4 w-20 bg-background-secondary rounded" />
+            </div>
+          ))}
+        </div>
+      ) : teams.length === 0 ? (
+        <Alert color="info">
+          {isStudentUser
+            ? "No approved mentor teams are available yet."
+            : "No teams yet. Use the create team action to get started."}
+        </Alert>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {teams.map((team) => (
+            <Link key={team.id} href={`/mentors/workspace/teams/${team.id}`}>
+              <Card className="cursor-pointer transition hover:shadow-md">
+                <Card.Header>
+                  <div className="flex justify-between items-center">
+                    <Card.Title>{team.name}</Card.Title>
+                    <div className="flex items-center -space-x-3 *:ring-2 *:ring-background">
+                      {team.preview_members.slice(0, 3).map((m, idx) => (
+                        <Avatar key={idx} size="sm">
+                          {m.users?.pic ? (
+                            <Avatar.Image src={m.users.pic} alt={m.users.name} />
+                          ) : null}
+                          <Avatar.Fallback className="text-[10px]">
+                            {m.users?.name?.split(" ").map((n) => n[0]).join("").toUpperCase() || "?"}
+                          </Avatar.Fallback>
+                        </Avatar>
+                      ))}
+                      {team.member_count > 3 && (
+                        <Avatar size="sm">
+                          <Avatar.Fallback className="text-[10px]">+{team.member_count - 3}</Avatar.Fallback>
+                        </Avatar>
+                      )}
+                    </div>
+                  </div>
+                </Card.Header>
+                <Card.Content>
+                  <Description className="line-clamp-1">{team.description || "No description"}</Description>
+                </Card.Content>
+                <Card.Footer className="flex flex-col items-start gap-2">
+                  <ProgressBar
+                    aria-label="Task progress"
+                    className="w-full"
+                    maxValue={100}
+                    minValue={0}
+                    value={progressPercent(team.completed_count, team.task_count)}
+                  >
+                    <div className="flex items-center gap-1">
+                      <Label>Tasks</Label>
+                      <Chip size="sm">{team.completed_count}/{team.task_count}</Chip>
+                    </div>
+                    <ProgressBar.Output />
+                    <ProgressBar.Track>
+                      <ProgressBar.Fill />
+                    </ProgressBar.Track>
+                  </ProgressBar>
+                </Card.Footer>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
