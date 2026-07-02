@@ -126,15 +126,7 @@ export default function JobsPage() {
           )}
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary">
-            <SlidersHorizontal />
-            Filter
-          </Button>
-          <Button
-            isIconOnly
-            variant="danger-soft"
-            onPress={() => setTypeFilter("all")}
-          >
+          <Button isIconOnly variant="danger-soft" onPress={() => setTypeFilter("all")}>
             <Trash />
           </Button>
           <Select
@@ -151,8 +143,8 @@ export default function JobsPage() {
                 <ListBox.Item value="all">All Types</ListBox.Item>
                 <ListBox.Item value="fulltime">Full-time</ListBox.Item>
                 <ListBox.Item value="parttime">Part-time</ListBox.Item>
-                <ListBox.Item value="internship">Internship</ListBox.Item>
                 <ListBox.Item value="contract">Contract</ListBox.Item>
+                <ListBox.Item value="internship">Internship</ListBox.Item>
               </ListBox>
             </Select.Popover>
           </Select>

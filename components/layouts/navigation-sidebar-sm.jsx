@@ -21,8 +21,9 @@ import {
   Ticket
 } from "lucide-react";
 import { SignOutButton, useUser } from "@clerk/nextjs";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 import { useOrgSelectorStore } from "@/stores/org-selector";
 import { navItems } from "@/config/data";
 
@@ -33,10 +34,47 @@ export function NavigationSidebarSmall() {
   const organizations = useOrgSelectorStore((state) => state.organizations);
   const selectedOrganizationId = useOrgSelectorStore((state) => state.selectedOrganizationId);
   const setSelectedOrganizationId = useOrgSelectorStore((state) => state.setSelectedOrganizationId);
+  const [isMember, setIsMember] = useState(false);
 
   useEffect(() => {
     if (user) fetchOrganizations(user.id);
   }, [user, fetchOrganizations]);
+
+  useEffect(() => {
+    async function checkMembership() {
+      if (!user || !selectedOrganizationId) {
+        setIsMember(false);
+        return;
+      }
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .single();
+
+      if (!userData) {
+        setIsMember(false);
+        return;
+      }
+
+      const { data } = await supabase
+        .from("organization_members")
+        .select("role")
+        .eq("organization_id", selectedOrganizationId)
+        .eq("user_id", userData.id)
+        .maybeSingle();
+
+      setIsMember(!!data);
+    }
+
+    checkMembership();
+  }, [user, selectedOrganizationId]);
+
+  const filteredNavItems = navItems.filter((item) => {
+    if (item.url === "/tasks" && !isMember) return false;
+    return true;
+  });
 
   return (
     <Drawer>
@@ -75,6 +113,9 @@ export function NavigationSidebarSmall() {
                       {organizations.map((itm) => (
                         <ListBox.Item key={itm.id} id={String(itm.id)} textValue={itm.org_name}>
                           <Avatar size="sm">
+                            {itm.org_logo_url ? (
+                              <Avatar.Image src={itm.org_logo_url} alt={itm.org_name} />
+                            ) : null}
                             <Avatar.Fallback>{itm.org_name?.[0]?.toUpperCase() || "O"}</Avatar.Fallback>
                           </Avatar>
                           <div className="flex flex-col">
@@ -90,7 +131,7 @@ export function NavigationSidebarSmall() {
               </div>
 
               <nav className="flex flex-col gap-2">
-                {navItems.map((item) => {
+                {filteredNavItems.map((item) => {
                   const Icon = item.icon;
 
                   return (

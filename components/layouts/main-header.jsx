@@ -88,6 +88,9 @@ export default function MainHeader({
                 {organizations.map((itm) => (
                   <ListBox.Item key={itm.id} id={String(itm.id)} textValue={itm.org_name}>
                     <Avatar size="sm">
+                      {itm.org_logo_url ? (
+                        <Avatar.Image src={itm.org_logo_url} alt={itm.org_name} />
+                      ) : null}
                       <Avatar.Fallback>{itm.org_name?.[0]?.toUpperCase() || "O"}</Avatar.Fallback>
                     </Avatar>
                     <div className="flex flex-col">

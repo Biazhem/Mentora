@@ -22,7 +22,7 @@ export default function OrganizationsPage() {
     async function fetchOrganizations() {
       const { data, error } = await supabase
         .from("organizations")
-        .select("id, org_name, description, company_type, country, city")
+        .select("id, org_name, description, company_type, country, city, org_logo_url")
         .order("created_at", { ascending: false });
         console.log("orgs", data)
 
@@ -66,32 +66,10 @@ export default function OrganizationsPage() {
           />
         </InputGroup>
         <div className="flex gap-2">
-          <ButtonGroup></ButtonGroup>
           <Button variant="secondary">
             <SlidersHorizontal />
             Filter
           </Button>
-          <Button isIconOnly variant="danger-soft">
-            <Trash />
-          </Button>
-          <Select
-            onValueChange={setIndustry}
-            defaultValue="all"
-            className="min-w-[140px]"
-          >
-            <Select.Trigger>
-              <Select.Value />
-              <Select.Indicator />
-            </Select.Trigger>
-            <Select.Popover>
-              <ListBox>
-                <ListBox.Item value="all">All Categories</ListBox.Item>
-                <ListBox.Item value="Tech">Tech</ListBox.Item>
-                <ListBox.Item value="Software">Software</ListBox.Item>
-                <ListBox.Item value="SaaS">SaaS</ListBox.Item>
-              </ListBox>
-            </Select.Popover>
-          </Select>
         </div>
       </div>
 
@@ -113,11 +91,11 @@ export default function OrganizationsPage() {
             <Link key={org.id} href={`/organization/${org.id}`}>
               <Card className="w-full items-stretch md:flex-row cursor-pointer">
                 <div className="relative h-[140px] w-full shrink-0 overflow-hidden rounded-2xl sm:h-[120px] sm:w-[120px]">
-                  {org.image_url ? (
+                  {org.org_logo_url ? (
                     <img
                       alt={org.org_name}
                       className="pointer-events-none absolute inset-0 h-full w-full scale-125 object-cover select-none"
-                      src={org.image_url}
+                      src={org.org_logo_url}
                     />
                   ) : (
                     <div className="absolute inset-0 h-full w-full bg-accent-soft-hover flex items-center justify-center">

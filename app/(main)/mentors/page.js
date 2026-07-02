@@ -108,10 +108,6 @@ export default function MentorsPage() {
           </Link>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary">
-            <SlidersHorizontal />
-            Filter
-          </Button>
           <Button
             isIconOnly
             variant="danger-soft"
@@ -134,11 +130,7 @@ export default function MentorsPage() {
             <Select.Popover>
               <ListBox>
                 {expertiseOptions.map((opt) => (
-                  <ListBox.Item
-                    key={opt}
-                    id={opt}
-                    textValue={opt === "all" ? "All Expertise" : opt}
-                  >
+                  <ListBox.Item key={opt} id={opt} textValue={opt === "all" ? "All Expertise" : opt}>
                     {opt === "all" ? "All Expertise" : opt}
                     <ListBox.ItemIndicator />
                   </ListBox.Item>

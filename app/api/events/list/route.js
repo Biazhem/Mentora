@@ -22,17 +22,18 @@ export async function GET(req) {
 
     const { data: orgsData } = await supabaseAdmin
       .from("organizations")
-      .select("id, org_name")
+      .select("id, org_name, org_logo_url")
       .in("id", orgIds);
 
     const orgMap = {};
     (orgsData || []).forEach((org) => {
-      orgMap[org.id] = org.org_name;
+      orgMap[org.id] = { name: org.org_name, logo: org.org_logo_url || null };
     });
 
     const enriched = (eventsData || []).map((event) => ({
       ...event,
-      org_name: orgMap[event.org_id] || "Unknown",
+      org_name: orgMap[event.org_id]?.name || "Unknown",
+      org_logo_url: orgMap[event.org_id]?.logo || null,
     }));
 
     let registeredEvents = [];

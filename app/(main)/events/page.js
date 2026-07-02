@@ -80,7 +80,8 @@ function getEventStatus(startDate, endDate) {
   const start = startDate ? new Date(startDate) : null;
   const end = endDate ? new Date(endDate) : null;
 
-  if (start && now >= start && (!end || now <= end)) return { label: "Ongoing", color: "success" };
+  if (start && now >= start && (!end || now <= end))
+    return { label: "Ongoing", color: "success" };
   if (end && now > end) return { label: "Completed", color: "default" };
   if (start && now < start) return { label: "Scheduled", color: "warning" };
   return { label: "Upcoming", color: "secondary" };
@@ -88,7 +89,9 @@ function getEventStatus(startDate, endDate) {
 
 export default function EventsPage() {
   const { user } = useUser();
-  const selectedOrganizationId = useOrgSelectorStore((s) => s.selectedOrganizationId);
+  const selectedOrganizationId = useOrgSelectorStore(
+    (s) => s.selectedOrganizationId,
+  );
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [events, setEvents] = useState([]);
@@ -206,12 +209,16 @@ export default function EventsPage() {
       if (data.error) {
         if (data.error === "Already registered") {
           setMessage("You are already registered for this event.");
-          setRegisteredEvents((prev) => new Map([...prev, [eventId, "registered"]]));
+          setRegisteredEvents(
+            (prev) => new Map([...prev, [eventId, "registered"]]),
+          );
         } else {
           throw new Error(data.error);
         }
       } else {
-        setRegisteredEvents((prev) => new Map([...prev, [eventId, "registered"]]));
+        setRegisteredEvents(
+          (prev) => new Map([...prev, [eventId, "registered"]]),
+        );
         setMessage("Successfully registered for the event!");
       }
     } catch (err) {
@@ -251,32 +258,28 @@ export default function EventsPage() {
 
       <div className="px-4 mb-8 flex justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
-        <InputGroup>
-          <InputGroup.Prefix>
-            <Search className="size-4" />
-          </InputGroup.Prefix>
-          <InputGroup.Input
-            placeholder="Search events"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-fit"
-          />
-        </InputGroup>
-        <Link href="/events/my-reg">
-          <Button>My Registrations</Button>
-        </Link>
-        {isAdmin && (
-          <Link href="/events/applications">
-            <Button variant="secondary">Manage Registrations</Button>
+          <InputGroup>
+            <InputGroup.Prefix>
+              <Search className="size-4" />
+            </InputGroup.Prefix>
+            <InputGroup.Input
+              placeholder="Search events"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-fit"
+            />
+          </InputGroup>
+          <Link href="/events/my-reg">
+            <Button>My Registrations</Button>
           </Link>
-        )}
+          {isAdmin && (
+            <Link href="/events/applications">
+              <Button variant="secondary">Manage Registrations</Button>
+            </Link>
+          )}
         </div>
 
         <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary">
-            <SlidersHorizontal />
-            Filter
-          </Button>
           <Button
             isIconOnly
             variant="danger-soft"
@@ -303,6 +306,7 @@ export default function EventsPage() {
               </ListBox>
             </Select.Popover>
           </Select>
+
           <Link href="/events/create">
             <Button>
               <Plus />
@@ -333,11 +337,19 @@ export default function EventsPage() {
                 <Modal.Trigger>
                   <Card className="w-full items-stretch md:flex-row cursor-pointer">
                     <div className="relative h-[140px] w-full shrink-0 overflow-hidden rounded-2xl sm:h-[120px] sm:w-[120px] bg-accent-soft-hover">
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-lg font-semibold text-muted">
-                            {event.org_name?.[0]?.toUpperCase() || "E"}
-                          </span>
-                        </div>
+                        {event.org_logo_url ? (
+                          <img
+                            alt={event.org_name}
+                            className="pointer-events-none absolute inset-0 h-full w-full scale-125 object-cover select-none"
+                            src={event.org_logo_url}
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-lg font-semibold text-muted">
+                              {event.org_name?.[0]?.toUpperCase() || "E"}
+                            </span>
+                          </div>
+                        )}
                     </div>
                     <div className="flex flex-1 flex-col gap-3">
                       <Card.Header className="gap-1">
@@ -356,17 +368,34 @@ export default function EventsPage() {
                       </Card.Header>
                       <Card.Footer className="mt-auto flex gap-1 flex-wrap">
                         {(() => {
-                          const eventStatus = getEventStatus(event.start_date, event.end_date);
-                          return <Chip size="sm" color={eventStatus.color} variant="soft">{eventStatus.label}</Chip>;
+                          const eventStatus = getEventStatus(
+                            event.start_date,
+                            event.end_date,
+                          );
+                          return (
+                            <Chip
+                              size="sm"
+                              color={eventStatus.color}
+                              variant="soft"
+                            >
+                              {eventStatus.label}
+                            </Chip>
+                          );
                         })()}
                         {event.type && <Chip>{event.type}</Chip>}
                         {event.location && <Chip>{event.location}</Chip>}
                         {registeredEvents.has(event.id) && (
                           <Chip
-                            color={registeredEvents.get(event.id) === "cancelled" ? "danger" : "success"}
+                            color={
+                              registeredEvents.get(event.id) === "cancelled"
+                                ? "danger"
+                                : "success"
+                            }
                             variant="soft"
                           >
-                            {registeredEvents.get(event.id) === "cancelled" ? "Canceled" : "Applied"}
+                            {registeredEvents.get(event.id) === "cancelled"
+                              ? "Canceled"
+                              : "Applied"}
                           </Chip>
                         )}
                       </Card.Footer>
@@ -381,11 +410,19 @@ export default function EventsPage() {
                         <div className="flex flex-row gap-2 items-start justify-between">
                           <div className="flex flex-row gap-3">
                             <div className="relative h-[200px] w-full shrink-0 overflow-hidden rounded-2xl sm:h-[120px] sm:w-[120px] bg-accent-soft-hover">
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <span className="text-lg font-semibold text-muted">
-                                    {event.org_name?.[0]?.toUpperCase() || "E"}
-                                  </span>
-                                </div>
+                                {event.org_logo_url ? (
+                                  <img
+                                    alt={event.org_name}
+                                    className="pointer-events-none absolute inset-0 h-full w-full scale-125 object-cover select-none"
+                                    src={event.org_logo_url}
+                                  />
+                                ) : (
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-lg font-semibold text-muted">
+                                      {event.org_name?.[0]?.toUpperCase() || "E"}
+                                    </span>
+                                  </div>
+                                )}
                             </div>
                             <div className="py-2 flex flex-col gap-1">
                               <Modal.Heading className="text-xl">
@@ -439,19 +476,13 @@ export default function EventsPage() {
                                   </h3>
                                   <div className="flex gap-2 items-center">
                                     {event.guest.map((g, idx) => (
-                                      <Avatar
+                                      <Chip
                                         key={idx}
                                         variant="soft"
                                         color="accent"
                                       >
-                                        <Avatar.Fallback>
-                                          {g.name
-                                            ?.split(" ")
-                                            .map((n) => n[0])
-                                            .join("")
-                                            .toUpperCase() || "?"}
-                                        </Avatar.Fallback>
-                                      </Avatar>
+                                        {g.name}
+                                      </Chip>
                                     ))}
                                   </div>
                                 </Surface>

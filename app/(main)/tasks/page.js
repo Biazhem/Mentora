@@ -36,6 +36,9 @@ export default function TasksPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteTaskId, setDeleteTaskId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
 
   const [newTask, setNewTask] = useState({
@@ -193,6 +196,27 @@ export default function TasksPage() {
       console.error("Create task error:", err);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTaskId) return;
+
+    setDeleting(true);
+    try {
+      await supabase.from("task_assignees").delete().eq("task_id", deleteTaskId);
+
+      const { error } = await supabase.from("tasks").delete().eq("id", deleteTaskId);
+
+      if (error) throw error;
+
+      setTasks((prev) => prev.filter((t) => t.id !== deleteTaskId));
+      setDeleteTaskId(null);
+      setDeleteModalOpen(false);
+    } catch (err) {
+      console.error("Delete task error:", err);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -566,6 +590,17 @@ export default function TasksPage() {
                       </div>
                     </Modal.Body>
                     <Modal.Footer>
+                      {isAdmin && (
+                        <Button
+                          variant="danger-soft"
+                          onClick={() => {
+                            setDeleteTaskId(task.id);
+                            setDeleteModalOpen(true);
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      )}
                       {currentUserId &&
                         task.task_assignees?.some(
                           (ta) => ta.user_id === currentUserId,
@@ -623,6 +658,28 @@ export default function TasksPage() {
           )}
         </div>
       )}
+
+      <Modal open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <Modal.Backdrop>
+          <Modal.Container>
+            <Modal.Dialog>
+              <Modal.CloseTrigger />
+              <Modal.Header>
+                <Modal.Heading>Delete Task</Modal.Heading>
+              </Modal.Header>
+              <Modal.Body>
+                <p>Are you sure you want to delete this task? This action cannot be undone.</p>
+              </Modal.Body>
+              <Modal.Footer>
+                <Button slot="close" variant="secondary">Cancel</Button>
+                <Button slot="close" color="danger" onClick={handleDelete} isLoading={deleting}>
+                  Delete
+                </Button>
+              </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
     </div>
   );
 }

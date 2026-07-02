@@ -33,6 +33,8 @@ CREATE TABLE public.organizations (
   founder_dob text NOT NULL DEFAULT ''::text,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
+  org_logo_url text NOT NULL DEFAULT ''::text,
+  founder_photo_url text NOT NULL DEFAULT ''::text,
   CONSTRAINT organizations_pkey PRIMARY KEY (id),
   CONSTRAINT organizations_clerk_id_fkey FOREIGN KEY (clerk_id) REFERENCES public.users(clerk_id)
 );

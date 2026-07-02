@@ -1,19 +1,60 @@
 "use client";
 
 import { Button, Tooltip } from "@heroui/react";
-import { DollarSign, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser, useClerk } from "@clerk/nextjs";
+import { supabase } from "@/lib/supabase";
 import MainHeader from "./main-header";
 import { navItems } from "@/config/data";
+import { Building } from "lucide-react";
+import { useOrgSelectorStore } from "@/stores/org-selector";
+import { useEffect, useState } from "react";
 
 export function MinimaDashboard({ children }) {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
   const pathname = usePathname();
+  const selectedOrganizationId = useOrgSelectorStore((s) => s.selectedOrganizationId);
+  const [isMember, setIsMember] = useState(false);
 
-  // User Profile Data Derivation
+  useEffect(() => {
+    async function checkMembership() {
+      if (!user || !selectedOrganizationId) {
+        setIsMember(false);
+        return;
+      }
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .single();
+
+      if (!userData) {
+        setIsMember(false);
+        return;
+      }
+
+      const { data } = await supabase
+        .from("organization_members")
+        .select("role")
+        .eq("organization_id", selectedOrganizationId)
+        .eq("user_id", userData.id)
+        .maybeSingle();
+
+      setIsMember(!!data);
+    }
+
+    checkMembership();
+  }, [user, selectedOrganizationId]);
+
+  const filteredNavItems = navItems.filter((item) => {
+    if (item.url === "/tasks" && !isMember) return false;
+    return true;
+  });
+
   const fullName = user?.fullName ?? "User";
   const imageUrl = user?.imageUrl;
   const emailAddress = user?.primaryEmailAddress?.emailAddress ?? "";
@@ -26,7 +67,7 @@ export function MinimaDashboard({ children }) {
         
         {/* Navigation Items */}
         <nav className="flex flex-col gap-6 w-full">
-          {navItems.map((item) => {
+          {filteredNavItems.map((item) => {
             const isActive = pathname === item.url;
 
             return (
@@ -60,13 +101,16 @@ export function MinimaDashboard({ children }) {
 
         {/* Bottom Actions */}
         <div className="w-full flex flex-col items-center justify-between gap-2">
-          <Tooltip content="Billing" placement="left" delay={0} offset={10}>
-            <Button variant="tertiary" isIconOnly size="lg">
-              <DollarSign className="text-background-inverse" />
-            </Button>
-          </Tooltip>
+          {selectedOrganizationId && (
+            <Tooltip content="Organization" placement="left" delay={0} offset={10}>
+              <Link href={`/organization/${selectedOrganizationId}`}>
+                <Button variant="tertiary" isIconOnly size="lg">
+                  <Building />
+                </Button>
+              </Link>
+            </Tooltip>
+          )}
 
-          {/* Clean, single-button logout structure */}
           <Tooltip content="Logout" placement="left" delay={0} offset={10}>
             <Button 
               variant="tertiary" 

@@ -15,7 +15,7 @@ export const useOrgSelectorStore = create((set, get) => ({
     try {
       const { data: ownedOrgs, error: ownedErr } = await supabase
         .from("organizations")
-        .select("id, org_name, description, clerk_id")
+        .select("id, org_name, description, clerk_id, org_logo_url")
         .eq("clerk_id", clerkId);
 
       const { data: userData } = await supabase
@@ -35,7 +35,7 @@ export const useOrgSelectorStore = create((set, get) => ({
           const ids = memberRows.map((m) => m.organization_id);
           const { data } = await supabase
             .from("organizations")
-            .select("id, org_name, description, clerk_id")
+            .select("id, org_name, description, clerk_id, org_logo_url")
             .in("id", ids);
           joinedOrgs = data || [];
         }
