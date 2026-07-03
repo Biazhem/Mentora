@@ -13,13 +13,14 @@ import {
 } from "@heroui/react";
 import { FabButton } from "../custom/drawer";
 import { ThemeSwitch } from "../theme/theme-switcher";
-import { Settings } from "lucide-react";
+import { Settings, Video } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useOrgSelectorStore } from "@/stores/org-selector";
 import { useUser } from "@clerk/nextjs";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { NavigationSidebarSmall } from "./navigation-sidebar-sm";
+import { supabase } from "@/lib/supabase";
 
 export default function MainHeader({
   fullName,
@@ -34,10 +35,33 @@ export default function MainHeader({
   const loading = useOrgSelectorStore((state) => state.loading);
   const selectedOrganizationId = useOrgSelectorStore((state) => state.selectedOrganizationId);
   const setSelectedOrganizationId = useOrgSelectorStore((state) => state.setSelectedOrganizationId);
+  const [activeMeeting, setActiveMeeting] = useState(null);
 
   useEffect(() => {
     if (user) fetchOrganizations(user.id);
   }, [user, fetchOrganizations]);
+
+  useEffect(() => {
+    async function checkActiveMeeting() {
+      if (!selectedOrganizationId) {
+        setActiveMeeting(null);
+        return;
+      }
+
+      const { data } = await supabase
+        .from("meetings")
+        .select("id, title")
+        .eq("org_id", selectedOrganizationId)
+        .eq("status", "active")
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      setActiveMeeting(data || null);
+    }
+
+    checkActiveMeeting();
+  }, [selectedOrganizationId]);
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
   const breadcrumbs = segments.map((segment, index) => {
@@ -107,6 +131,14 @@ export default function MainHeader({
           <></>
         ) : null}
         <ButtonGroup>
+          {activeMeeting && (
+            <Link href={`/discussion/meetings/${activeMeeting.id}`}>
+              <Button color="success" size="lg">
+                <Video className="size-4" />
+                Join Meeting
+              </Button>
+            </Link>
+          )}
           <Button isIconOnly size="lg" variant="tertiary">
             <Settings />
           </Button>

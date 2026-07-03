@@ -1,58 +1,117 @@
 "use client";
 
-import { Button, ButtonGroup, Card } from "@heroui/react";
-import { Camera, Mic, MicOff, PhoneOff } from "lucide-react";
-import { participants } from "@/config/data";
+import { useState } from "react";
+import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { Alert, Button, Card, Input, Label, TextField } from "@heroui/react";
+import { Video } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useOrgSelectorStore } from "@/stores/org-selector";
 
-export default function Meetings() {
+export default function MeetingCreate() {
+  const { user } = useUser();
+  const router = useRouter();
+  const selectedOrganizationId = useOrgSelectorStore((s) => s.selectedOrganizationId);
+  const [title, setTitle] = useState("New Meeting");
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleCreateMeeting = async () => {
+    if (!user || !selectedOrganizationId) return;
+
+    setCreating(true);
+    setError("");
+
+    try {
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .single();
+
+      if (!userData) {
+        throw new Error("Your profile is not synced with Supabase.");
+      }
+
+      const { data: meeting, error: meetingError } = await supabase
+        .from("meetings")
+        .insert({
+          org_id: selectedOrganizationId,
+          host_id: userData.id,
+          title,
+          status: "active",
+        })
+        .select("id")
+        .single();
+
+      if (meetingError) throw meetingError;
+
+      await supabase.from("meeting_participants").insert({
+        meeting_id: meeting.id,
+        user_id: userData.id,
+      });
+
+      router.push(`/discussion/meetings/${meeting.id}`);
+    } catch (err) {
+      setError(err?.message || "Could not create meeting");
+      console.error("Create meeting error:", err);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  if (!selectedOrganizationId) {
+    return (
+      <div className="container py-10">
+        <Alert status="warning">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>Select an organization</Alert.Title>
+            <Alert.Description>
+              Choose an organization from the header before creating a meeting.
+            </Alert.Description>
+          </Alert.Content>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-full flex-col bg-background-secondary">
-      <div className="flex gap-2 overflow-x-auto p-2">
-        {participants.map((user) => (
-          <Card
-            key={user.id}
-            className={`min-w-[120px] border-2 text-center ${
-              user.isSpeaking ? "border-success" : "border-default"
-            }`}
+    <div className="container flex min-h-[70vh] items-center justify-center py-10">
+      <Card className="w-full max-w-xl">
+        <Card.Header>
+          <Card.Title>Create video meeting</Card.Title>
+          <Card.Description>
+            Start a Daily video room and sync it with your organization meeting.
+          </Card.Description>
+        </Card.Header>
+        <Card.Content className="space-y-4">
+          {error && (
+            <Alert status="danger">
+              <Alert.Indicator />
+              <Alert.Content>
+                <Alert.Title>Could not create meeting</Alert.Title>
+                <Alert.Description>{error}</Alert.Description>
+              </Alert.Content>
+            </Alert>
+          )}
+
+          <TextField value={title} onChange={setTitle}>
+            <Label>Meeting title</Label>
+            <Input />
+          </TextField>
+        </Card.Content>
+        <Card.Footer className="justify-end">
+          <Button
+            onPress={handleCreateMeeting}
+            isPending={creating}
+            isDisabled={!title.trim()}
           >
-            <Card.Content className="p-3">
-              <div className="mb-2 flex h-12 w-full items-center justify-center rounded-md bg-default-100">
-                {user.isMuted ? <MicOff size={16} /> : <Mic size={16} />}
-              </div>
-              <p className="text-xs font-medium">{user.name}</p>
-              <p className="text-[10px] text-muted">
-                {user.isMuted ? "Muted" : "Speaking"}
-              </p>
-            </Card.Content>
-          </Card>
-        ))}
-      </div>
-
-      <div className="flex flex-1 items-center justify-center p-3">
-        <div className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-2xl bg-background shadow">
-          <Mic size={40} />
-          <p className="text-lg font-semibold">Audio Call Active</p>
-          <p className="text-sm text-muted">No video, voice only</p>
-        </div>
-      </div>
-
-      <div className="flex justify-center gap-4 bg-background p-4 shadow">
-        <ButtonGroup>
-          <Button isIconOnly variant="outline" size="lg">
-            <Mic />
+            <Video className="size-4" />
+            Start meeting
           </Button>
-          <Button isIconOnly variant="outline" size="lg">
-            <MicOff />
-          </Button>
-          <Button isIconOnly variant="outline" size="lg">
-            <Camera />
-          </Button>
-          <Button variant="danger" size="lg">
-            <PhoneOff />
-            Turn Off
-          </Button>
-        </ButtonGroup>
-      </div>
+        </Card.Footer>
+      </Card>
     </div>
   );
 }

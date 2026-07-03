@@ -61,7 +61,7 @@ export function MinimaDashboard({ children }) {
   const fallbackInitials = `${user?.firstName?.charAt(0) || ""}${user?.lastName?.charAt(0) || ""}`.trim() || "U";
 
   return (
-    <div className="w-full min-h-screen flex bg-background-secondary dark:bg-background-inverse/2">
+    <div className="w-full min-h-svh max-h-full flex bg-background-secondary dark:bg-background-inverse/2">
       {/* Sidebar */}
       <aside className="hidden lg:flex lg:w-20 lg:fixed lg:h-screen py-8 flex-col items-center justify-between">
         

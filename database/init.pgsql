@@ -243,3 +243,37 @@ CREATE TABLE public.team_task_assignees (
   CONSTRAINT team_task_assignees_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
   CONSTRAINT team_task_assignees_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
+CREATE TABLE public.org_messages (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  org_id uuid NOT NULL,
+  sender_id uuid NOT NULL,
+  content text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT org_messages_pkey PRIMARY KEY (id),
+  CONSTRAINT org_messages_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.organizations(id),
+  CONSTRAINT org_messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.meetings (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  org_id uuid NOT NULL,
+  host_id uuid NOT NULL,
+  title text NOT NULL DEFAULT 'Call'::text,
+  status text NOT NULL DEFAULT 'active'::text,
+  started_at timestamp with time zone NOT NULL DEFAULT now(),
+  ended_at timestamp with time zone,
+  transcript jsonb DEFAULT '[]'::jsonb,
+  daily_room_name text,
+  daily_room_url text,
+  CONSTRAINT meetings_pkey PRIMARY KEY (id),
+  CONSTRAINT meetings_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.organizations(id),
+  CONSTRAINT meetings_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.meeting_participants (
+  meeting_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  joined_at timestamp with time zone NOT NULL DEFAULT now(),
+  left_at timestamp with time zone,
+  CONSTRAINT meeting_participants_pkey PRIMARY KEY (meeting_id, user_id),
+  CONSTRAINT meeting_participants_meeting_id_fkey FOREIGN KEY (meeting_id) REFERENCES public.meetings(id),
+  CONSTRAINT meeting_participants_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
