@@ -30,11 +30,17 @@ export default function MainHeader({
   emailAddress,
 }) {
   const { user } = useUser();
-  const fetchOrganizations = useOrgSelectorStore((state) => state.fetchOrganizations);
+  const fetchOrganizations = useOrgSelectorStore(
+    (state) => state.fetchOrganizations,
+  );
   const organizations = useOrgSelectorStore((state) => state.organizations);
   const loading = useOrgSelectorStore((state) => state.loading);
-  const selectedOrganizationId = useOrgSelectorStore((state) => state.selectedOrganizationId);
-  const setSelectedOrganizationId = useOrgSelectorStore((state) => state.setSelectedOrganizationId);
+  const selectedOrganizationId = useOrgSelectorStore(
+    (state) => state.selectedOrganizationId,
+  );
+  const setSelectedOrganizationId = useOrgSelectorStore(
+    (state) => state.setSelectedOrganizationId,
+  );
   const [activeMeeting, setActiveMeeting] = useState(null);
 
   useEffect(() => {
@@ -84,7 +90,11 @@ export default function MainHeader({
             const isLast = index === breadcrumbs.length - 1;
 
             if (isLast) {
-              return <Breadcrumbs.Item key={item.href}>{item.label}</Breadcrumbs.Item>;
+              return (
+                <Breadcrumbs.Item key={item.href}>
+                  {item.label}
+                </Breadcrumbs.Item>
+              );
             }
 
             return (
@@ -95,10 +105,10 @@ export default function MainHeader({
           })}
         </Breadcrumbs>
       </div>
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2">
         {organizations.length > 0 ? (
           <Select
-            className="hidden w-56 lg:block"
+            className="hidden min-w-56 lg:flex"
             placeholder="Select organization"
             value={selectedOrganizationId}
             onChange={(value) => setSelectedOrganizationId(value)}
@@ -110,16 +120,27 @@ export default function MainHeader({
             <Select.Popover>
               <ListBox>
                 {organizations.map((itm) => (
-                  <ListBox.Item key={itm.id} id={String(itm.id)} textValue={itm.org_name}>
+                  <ListBox.Item
+                    key={itm.id}
+                    id={String(itm.id)}
+                    textValue={itm.org_name}
+                  >
                     <Avatar size="sm">
                       {itm.org_logo_url ? (
-                        <Avatar.Image src={itm.org_logo_url} alt={itm.org_name} />
+                        <Avatar.Image
+                          src={itm.org_logo_url}
+                          alt={itm.org_name}
+                        />
                       ) : null}
-                      <Avatar.Fallback>{itm.org_name?.[0]?.toUpperCase() || "O"}</Avatar.Fallback>
+                      <Avatar.Fallback>
+                        {itm.org_name?.[0]?.toUpperCase() || "O"}
+                      </Avatar.Fallback>
                     </Avatar>
                     <div className="flex flex-col">
                       <Label>{itm.org_name}</Label>
-                      <Description>{itm.description?.slice(0, 18) || ""}...</Description>
+                      <Description>
+                        {itm.description?.slice(0, 24) || ""}...
+                      </Description>
                     </div>
                     <ListBox.ItemIndicator />
                   </ListBox.Item>
@@ -130,19 +151,14 @@ export default function MainHeader({
         ) : !loading ? (
           <></>
         ) : null}
-        <ButtonGroup>
-          {activeMeeting && (
-            <Link href={`/discussion/meetings/${activeMeeting.id}`}>
-              <Button color="success" size="lg">
-                <Video className="size-4" />
-                Join Meeting
-              </Button>
-            </Link>
-          )}
-          <Button isIconOnly size="lg" variant="tertiary">
-            <Settings />
-          </Button>
-        </ButtonGroup>
+        {activeMeeting && (
+          <Link href={`/discussion/meetings/${activeMeeting.id}`}>
+            <Button color="success" size="lg">
+              <Video className="size-4" />
+              Join Meeting
+            </Button>
+          </Link>
+        )}
         <ThemeSwitch />
         <Popover>
           <Button isIconOnly>
@@ -183,20 +199,6 @@ export default function MainHeader({
                   </div>
                 </div>
               </Popover.Heading>
-              {/* <p className="mt-3 text-sm text-muted">
-                    Product designer and creative director. Building beautiful
-                    experiences that matter.
-                  </p>
-                  <div className="mt-2 flex justify-end">
-                    <ButtonGroup variant="secondary">
-                      <Button isIconOnly>
-                        <DribbbleLogoIcon />
-                      </Button>
-                      <Button isIconOnly>
-                        <ThreadsLogoIcon />
-                      </Button>
-                    </ButtonGroup>
-                  </div> */}
             </Popover.Dialog>
           </Popover.Content>
         </Popover>

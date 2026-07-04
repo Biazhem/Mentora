@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@heroui/react";
 import Link from "next/link";
-import { Plus, Search, SlidersHorizontal, Trash } from "lucide-react";
+import { Plus, Search, Trash } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@clerk/nextjs";
 import { useOrgSelectorStore } from "@/stores/org-selector";
@@ -140,11 +140,26 @@ export default function JobsPage() {
             </Select.Trigger>
             <Select.Popover>
               <ListBox>
-                <ListBox.Item value="all">All Types</ListBox.Item>
-                <ListBox.Item value="fulltime">Full-time</ListBox.Item>
-                <ListBox.Item value="parttime">Part-time</ListBox.Item>
-                <ListBox.Item value="contract">Contract</ListBox.Item>
-                <ListBox.Item value="internship">Internship</ListBox.Item>
+                <ListBox.Item id="all" textValue="All Types">
+                  All Types
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+                <ListBox.Item id="fulltime" textValue="Full-time">
+                  Full-time
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+                <ListBox.Item id="parttime" textValue="Part-time">
+                  Part-time
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+                <ListBox.Item id="contract" textValue="Contract">
+                  Contract
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+                <ListBox.Item id="internship" textValue="Internship">
+                  Internship
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
               </ListBox>
             </Select.Popover>
           </Select>

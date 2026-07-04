@@ -16,7 +16,9 @@ export function MinimaDashboard({ children }) {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
   const pathname = usePathname();
-  const selectedOrganizationId = useOrgSelectorStore((s) => s.selectedOrganizationId);
+  const selectedOrganizationId = useOrgSelectorStore(
+    (s) => s.selectedOrganizationId,
+  );
   const [isMember, setIsMember] = useState(false);
 
   useEffect(() => {
@@ -58,42 +60,43 @@ export function MinimaDashboard({ children }) {
   const fullName = user?.fullName ?? "User";
   const imageUrl = user?.imageUrl;
   const emailAddress = user?.primaryEmailAddress?.emailAddress ?? "";
-  const fallbackInitials = `${user?.firstName?.charAt(0) || ""}${user?.lastName?.charAt(0) || ""}`.trim() || "U";
+  const fallbackInitials =
+    `${user?.firstName?.charAt(0) || ""}${user?.lastName?.charAt(0) || ""}`.trim() ||
+    "U";
 
   return (
     <div className="w-full min-h-svh max-h-full flex bg-background-secondary dark:bg-background-inverse/2">
       {/* Sidebar */}
       <aside className="hidden lg:flex lg:w-20 lg:fixed lg:h-screen py-8 flex-col items-center justify-between">
-        
         {/* Navigation Items */}
         <nav className="flex flex-col gap-6 w-full">
           {filteredNavItems.map((item) => {
             const isActive = pathname === item.url;
 
             return (
-              <Tooltip 
-                key={item.url} 
-                content={item.title} 
-                placement="right" 
-                delay={0}
-              >
-                <Link
-                  href={item.url}
-                  className="group relative w-full flex items-center justify-center py-3 cursor-pointer"
-                >
-                  {/* Active Indicator Bar */}
-                  <div
-                    className={`absolute left-0 h-full bg-background-inverse transition-all rounded-r-lg ${
-                      isActive ? "w-1 opacity-100" : "w-[2px] opacity-0"
-                    } group-hover:opacity-100`}
-                  />
-                  {/* Navigation Icon */}
-                  <item.icon
-                    className={`transition-all ${
-                      isActive ? "text-background-inverse" : "text-muted"
-                    }`}
-                  />
-                </Link>
+              <Tooltip key={item.url} delay={0}>
+                <Tooltip.Trigger>
+                  <Link
+                    href={item.url}
+                    className="group relative w-full flex items-center justify-center py-3 cursor-pointer"
+                  >
+                    <div
+                      className={`absolute left-0 h-full bg-background-inverse transition-all rounded-r-lg ${
+                        isActive ? "w-1 opacity-100" : "w-[2px] opacity-0"
+                      } group-hover:opacity-100`}
+                    />
+
+                    <item.icon
+                      className={`transition-all ${
+                        isActive ? "text-background-inverse" : "text-muted"
+                      }`}
+                    />
+                  </Link>
+                </Tooltip.Trigger>
+                <Tooltip.Content showArrow placement="right">
+                  <Tooltip.Arrow />
+                  <p>{item.title}</p>
+                </Tooltip.Content>
               </Tooltip>
             );
           })}
@@ -102,24 +105,32 @@ export function MinimaDashboard({ children }) {
         {/* Bottom Actions */}
         <div className="w-full flex flex-col items-center justify-between gap-2">
           {selectedOrganizationId && (
-            <Tooltip content="Organization" placement="left" delay={0} offset={10}>
+            <Tooltip delay={0} offset={10}>
               <Link href={`/organization/${selectedOrganizationId}`}>
                 <Button variant="tertiary" isIconOnly size="lg">
                   <Building />
                 </Button>
               </Link>
+              <Tooltip.Content showArrow placement="right">
+                <Tooltip.Arrow />
+                <p>Organization</p>
+              </Tooltip.Content>
             </Tooltip>
           )}
 
-          <Tooltip content="Logout" placement="left" delay={0} offset={10}>
-            <Button 
-              variant="tertiary" 
-              isIconOnly 
+          <Tooltip delay={0} offset={10}>
+            <Button
+              variant="danger-soft"
+              isIconOnly
               size="lg"
               onClick={() => signOut({ redirectUrl: "/" })}
             >
               <LogOut className="text-background-inverse" />
             </Button>
+            <Tooltip.Content showArrow placement="right">
+              <Tooltip.Arrow />
+              <p>Logout</p>
+            </Tooltip.Content>
           </Tooltip>
         </div>
       </aside>

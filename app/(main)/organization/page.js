@@ -4,10 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Chip, Card } from "@heroui/react";
 import { Select, ListBox } from "@heroui/react";
-import { Button } from "@heroui/react";
-import { ButtonGroup } from "@heroui/react";
-import { Trash } from "lucide-react";
-import { SlidersHorizontal } from "lucide-react";
 import { InputGroup } from "@heroui/react";
 import { Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -24,7 +20,6 @@ export default function OrganizationsPage() {
         .from("organizations")
         .select("id, org_name, description, company_type, country, city, org_logo_url")
         .order("created_at", { ascending: false });
-        console.log("orgs", data)
 
       if (data) {
         setOrganizations(data);
@@ -34,6 +29,11 @@ export default function OrganizationsPage() {
 
     fetchOrganizations();
   }, []);
+
+  const industryOptions = [
+    "all",
+    ...Array.from(new Set(organizations.map((o) => o.company_type).filter(Boolean))).sort(),
+  ];
 
   const filteredOrganizations = organizations.filter((org) => {
     return (
@@ -53,7 +53,7 @@ export default function OrganizationsPage() {
         </p>
       </div>
 
-      <div className="px-4 mb-8 flex justify-between">
+      <div className="px-4 mb-8 flex justify-between gap-3 flex-wrap">
         <InputGroup>
           <InputGroup.Prefix>
             <Search className="size-4" />
@@ -66,10 +66,26 @@ export default function OrganizationsPage() {
           />
         </InputGroup>
         <div className="flex gap-2">
-          <Button variant="secondary">
-            <SlidersHorizontal />
-            Filter
-          </Button>
+          <Select
+            onValueChange={setIndustry}
+            defaultValue="all"
+            className="min-w-[160px]"
+          >
+            <Select.Trigger>
+              <Select.Value />
+              <Select.Indicator />
+            </Select.Trigger>
+            <Select.Popover>
+              <ListBox>
+                {industryOptions.map((opt) => (
+                  <ListBox.Item key={opt} id={opt} textValue={opt === "all" ? "All Industries" : opt}>
+                    {opt === "all" ? "All Industries" : opt}
+                    <ListBox.ItemIndicator />
+                  </ListBox.Item>
+                ))}
+              </ListBox>
+            </Select.Popover>
+          </Select>
         </div>
       </div>
 

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button, InputGroup, ListBox, Select } from "@heroui/react";
 import { supabase } from "@/lib/supabase";
-import { Search, SlidersHorizontal, Trash } from "lucide-react";
+import { Search, Trash } from "lucide-react";
 import { MentorDrawer } from "@/components/custom/drawer-mentor";
 import Link from "next/link";
 

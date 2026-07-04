@@ -59,6 +59,7 @@ io.on("connection", (socket) => {
       userSockets.set(socket.id, { meetingId, user });
 
       const participants = Array.from(meetings.get(meetingId).values());
+      console.log(`User ${user.name} (${socket.id}) joined meeting ${meetingId}. Total: ${participants.length}`);
       io.to(`meeting:${meetingId}`).emit("participants-update", participants);
     } catch (err) {
       console.error("Error in join-meeting:", err);
@@ -73,12 +74,14 @@ io.on("connection", (socket) => {
         console.error("Invalid offer data", { meetingId, to, offerExists: !!offer });
         return;
       }
+      console.log(`Forwarding offer from ${socket.id} to ${to} for meeting ${meetingId}`);
       io.to(to).emit("offer", {
         offer,
         from: socket.id,
       });
     } catch (err) {
       console.error("Error in offer:", err);
+      socket.emit("error", { message: "Failed to send offer" });
     }
   });
 
@@ -89,12 +92,14 @@ io.on("connection", (socket) => {
         console.error("Invalid answer data", { meetingId, to, answerExists: !!answer });
         return;
       }
+      console.log(`Forwarding answer from ${socket.id} to ${to} for meeting ${meetingId}`);
       io.to(to).emit("answer", {
         answer,
         from: socket.id,
       });
     } catch (err) {
       console.error("Error in answer:", err);
+      socket.emit("error", { message: "Failed to send answer" });
     }
   });
 
@@ -105,12 +110,14 @@ io.on("connection", (socket) => {
         console.error("Invalid ice-candidate data", { meetingId, to, candidateExists: !!candidate });
         return;
       }
+      console.log(`Forwarding ICE candidate from ${socket.id} to ${to}`);
       io.to(to).emit("ice-candidate", {
         candidate,
         from: socket.id,
       });
     } catch (err) {
       console.error("Error in ice-candidate:", err);
+      socket.emit("error", { message: "Failed to send ICE candidate" });
     }
   });
 
@@ -246,9 +253,11 @@ app.get("/meeting/:id/participants", (req, res) => {
   try {
     const meeting = meetings.get(req.params.id);
     if (!meeting) {
-      return res.json({ participants: [], meetingId: req.params.id });
+      return res.json({ participants: [], meetingId: req.params.id, message: "Meeting not found" });
     }
-    res.json({ participants: Array.from(meeting.values()), meetingId: req.params.id });
+    const participants = Array.from(meeting.values());
+    console.log(`Retrieved ${participants.length} participants for meeting ${req.params.id}`);
+    res.json({ participants, meetingId: req.params.id });
   } catch (err) {
     console.error("Get participants error:", err);
     res.status(500).json({ error: err.message });

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { Plus, Search, SlidersHorizontal, Trash } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { ArrowUpRight } from "lucide-react";
 import {
   Modal,
@@ -280,13 +280,6 @@ export default function EventsPage() {
         </div>
 
         <div className="flex gap-2 flex-wrap">
-          <Button
-            isIconOnly
-            variant="danger-soft"
-            onPress={() => setTypeFilter("all")}
-          >
-            <Trash />
-          </Button>
           <Select
             onValueChange={setTypeFilter}
             defaultValue="all"

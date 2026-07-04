@@ -57,10 +57,7 @@ export default function MeetingPage({ params }) {
   const recognitionRef = useRef(null);
   const sttTimeoutRef = useRef(null);
   const sttRunningRef = useRef(false);
-  const peerDescriptionState = useRef({});  // Track description state per peer
-  const peerProcessing = useRef({});  // Track if we're currently processing offer/answer for a peer
 
-  // Keep localStreamRef in sync
   useEffect(() => {
     localStreamRef.current = localStream;
   }, [localStream]);
@@ -75,30 +72,35 @@ export default function MeetingPage({ params }) {
   }, [id]);
 
   const getLocalStream = async (video = false) => {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video,
-    });
-    setLocalStream(stream);
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = stream;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: { echoCancellation: true, noiseSuppression: true }, 
+        video: video ? { width: { ideal: 640 }, height: { ideal: 480 } } : false 
+      });
+      setLocalStream(stream);
+      setIsVideoOff(!video);
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+      console.log("Local stream obtained with audio:", stream.getAudioTracks().length > 0, "video:", stream.getVideoTracks().length > 0);
+      return stream;
+    } catch (err) {
+      console.error("Error getting local stream:", err);
+      setCallError(`Cannot access media: ${err.message}`);
+      throw err;
     }
-    return stream;
   };
 
   const toggleMic = async () => {
     const stream = localStreamRef.current;
     if (!stream) {
-      console.log("No stream, getting audio only");
       const newStream = await getLocalStream(false);
-      newStream.getAudioTracks().forEach((t) => (t.enabled = true));
       setIsMuted(false);
       return;
     }
     const audioTrack = stream.getAudioTracks()[0];
     if (audioTrack) {
       audioTrack.enabled = !audioTrack.enabled;
-      console.log(`Mic toggled: ${audioTrack.enabled ? "on" : "off"}`);
       setIsMuted(!audioTrack.enabled);
       socketRef.current?.emit("toggle-mute", { meetingId: id });
     }
@@ -107,7 +109,6 @@ export default function MeetingPage({ params }) {
   const toggleVideo = async () => {
     const stream = localStreamRef.current;
     if (!stream) {
-      console.log("No stream, getting video + audio");
       const newStream = await getLocalStream(true);
       if (localVideoRef.current) localVideoRef.current.srcObject = newStream;
       setIsVideoOff(false);
@@ -116,23 +117,35 @@ export default function MeetingPage({ params }) {
     const videoTrack = stream.getVideoTracks()[0];
     if (videoTrack) {
       videoTrack.enabled = !videoTrack.enabled;
-      console.log(`Camera toggled: ${videoTrack.enabled ? "on" : "off"}`);
       setIsVideoOff(!videoTrack.enabled);
       socketRef.current?.emit("toggle-video", { meetingId: id });
     }
   };
 
-  const createPeerConnection = (peerSocketId, stream) => {
-    const pc = new RTCPeerConnection(ICE_SERVERS);
+  const createPeerConnection = useCallback((peerSocketId) => {
+    if (peerConnections.current[peerSocketId]) return peerConnections.current[peerSocketId];
 
-    const activeStream = stream || localStreamRef.current;
-    if (activeStream) {
-      activeStream.getTracks().forEach((track) => pc.addTrack(track, activeStream));
+    const pc = new RTCPeerConnection(ICE_SERVERS);
+    peerConnections.current[peerSocketId] = pc;
+
+    const stream = localStreamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
     }
 
     pc.ontrack = (event) => {
-      console.log(`Received track from ${peerSocketId}:`, event.track.kind);
-      setRemoteStreams((prev) => ({ ...prev, [peerSocketId]: event.streams[0] }));
+      console.log("Remote track received from:", peerSocketId, event.track.kind);
+      setRemoteStreams((prev) => {
+        const updated = { ...prev };
+        if (event.streams && event.streams.length > 0) {
+          updated[peerSocketId] = event.streams[0];
+        }
+        return updated;
+      });
+    };
+
+    pc.ondatachannel = (event) => {
+      console.log("Data channel received:", event.channel.label);
     };
 
     pc.onicecandidate = (event) => {
@@ -145,23 +158,24 @@ export default function MeetingPage({ params }) {
       }
     };
 
-    // Track connection state changes
     pc.onconnectionstatechange = () => {
-      console.log(`Connection state with ${peerSocketId}: ${pc.connectionState}`);
+      console.log("Connection state change:", peerSocketId, pc.connectionState);
       if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
-        console.error(`Connection failed with ${peerSocketId}`);
-      } else if (pc.connectionState === "connected") {
-        console.log(`Successfully connected with ${peerSocketId}`);
+        delete peerConnections.current[peerSocketId];
+        setRemoteStreams((prev) => {
+          const next = { ...prev };
+          delete next[peerSocketId];
+          return next;
+        });
       }
     };
 
     pc.oniceconnectionstatechange = () => {
-      console.log(`ICE connection state with ${peerSocketId}: ${pc.iceConnectionState}`);
+      console.log("ICE connection state:", peerSocketId, pc.iceConnectionState);
     };
 
-    peerConnections.current[peerSocketId] = pc;
     return pc;
-  };
+  }, [id]);
 
   const joinMeeting = async (userData) => {
     if (!userData) return;
@@ -234,7 +248,7 @@ export default function MeetingPage({ params }) {
     return () => { cancelled = true; };
   }, [fetchParticipants, id, user]);
 
-  // Supabase realtime for meeting status + participant changes
+  // Supabase realtime for meeting status
   useEffect(() => {
     if (!meeting?.id || accessDenied) return;
 
@@ -255,13 +269,7 @@ export default function MeetingPage({ params }) {
   useEffect(() => {
     if (!meeting || meeting.status !== "active" || accessDenied || !currentUser) return;
 
-    const socket = io(SOCKET_URL, { 
-      transports: ["websocket", "polling"],
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
-    });
+    const socket = io(SOCKET_URL, { transports: ["websocket", "polling"] });
     socketRef.current = socket;
 
     socket.on("connect", () => {
@@ -270,27 +278,20 @@ export default function MeetingPage({ params }) {
         meetingId: id,
         user: { id: currentUser.id, name: currentUser.name, pic: currentUser.pic },
       });
-    });
-
-    socket.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-      setCallError(`Connection error: ${error.message}`);
-    });
-
-    socket.on("error", (error) => {
-      console.error("Socket error:", error);
-      setCallError(`Socket error: ${error?.message || "Unknown error"}`);
-    });
-
-    socket.on("disconnect", (reason) => {
-      console.log("Socket disconnected:", reason);
-      if (reason === "io server disconnect") {
-        socket.connect();
+      
+      // Get local stream on connect
+      if (!localStreamRef.current) {
+        getLocalStream(false).catch(err => {
+          console.error("Failed to get initial stream:", err);
+        });
       }
     });
 
+    socket.on("connect_error", (error) => {
+      setCallError(`Connection error: ${error.message}`);
+    });
+
     socket.on("participants-update", (socketParticipants) => {
-      // Merge socket participants with Supabase data
       setParticipants((prev) => {
         const supabaseOnly = prev.filter(
           (sp) => !socketParticipants.some((sp2) => sp2.id === sp.user_id)
@@ -304,223 +305,74 @@ export default function MeetingPage({ params }) {
           joined_at: sp.joined_at || new Date().toISOString(),
           left_at: null,
         }));
-        const updated = [...supabaseOnly, ...fromSocket];
+        const merged = [...supabaseOnly, ...fromSocket];
         
-        // Auto-trigger offer to new participants if local stream exists
-        if (localStreamRef.current && socketRef.current) {
-          const newParticipants = socketParticipants.filter(
-            (sp) => !prev.some((p) => p.socketId === sp.socketId)
-          );
-          
-          newParticipants.forEach((newPeer) => {
-            if (!peerConnections.current[newPeer.socketId]) {
-              console.log(`New participant detected: ${newPeer.name}, creating connection`);
-              setTimeout(() => {
-                const pc = createPeerConnection(newPeer.socketId, localStreamRef.current);
-                pc.createOffer()
-                  .then((offer) => {
+        // Auto-trigger call initiation if we have a local stream and there are new participants
+        if (localStreamRef.current && merged.length > 1) {
+          setTimeout(() => {
+            const others = merged.filter((p) => p.user_id !== currentUser?.id && p.socketId);
+            for (const p of others) {
+              if (!peerConnections.current[p.socketId] && socketRef.current) {
+                try {
+                  const pc = createPeerConnection(p.socketId);
+                  pc.createOffer().then((offer) => {
                     pc.setLocalDescription(offer);
-                    socketRef.current.emit("offer", {
+                    socketRef.current?.emit("offer", {
                       meetingId: id,
                       offer,
-                      to: newPeer.socketId,
+                      to: p.socketId,
                     });
-                  })
-                  .catch((err) => console.error("Error creating offer:", err));
-              }, 100);
+                  }).catch(err => console.error("Error creating offer:", err));
+                } catch (err) {
+                  console.error("Error initiating connection:", err);
+                }
+              }
             }
-          });
+          }, 100);
         }
         
-        return updated;
+        return merged;
       });
     });
 
     socket.on("offer", async (data) => {
+      if (data.from === socket.id) return;
       try {
-        if (data.from === socket.id) return;
-        console.log(`Received offer from ${data.from}`);
-        
-        // Prevent concurrent processing of offer/answer for same peer
-        if (peerProcessing.current[data.from]) {
-          console.log(`Already processing offer/answer for ${data.from}, queueing...`);
-          return;
-        }
-        peerProcessing.current[data.from] = true;
-        
-        try {
-          let pc = peerConnections.current[data.from];
-          
-          // If connection exists and is connected, ignore duplicate offer
-          if (pc && pc.connectionState === "connected") {
-            console.log(`Connection with ${data.from} already connected, ignoring duplicate offer`);
-            return;
-          }
-          
-          // Close and recreate if in bad state
-          if (pc && (pc.connectionState === "closed" || pc.connectionState === "failed")) {
-            console.warn(`Peer connection ${data.from} is ${pc.connectionState}, creating new connection`);
-            pc.close();
-            peerConnections.current[data.from] = null;
-            delete peerDescriptionState.current[data.from];
-            pc = null;
-          }
-          
-          // Create new connection if needed
-          if (!pc) {
-            console.log(`Creating new connection for ${data.from}`);
-            pc = createPeerConnection(data.from);
-            peerDescriptionState.current[data.from] = { hasLocalDesc: false, hasRemoteDesc: false };
-          }
-          
-          // Add local stream tracks if available
-          const stream = localStreamRef.current;
-          if (stream) {
-            const senders = pc.getSenders();
-            stream.getTracks().forEach((track) => {
-              const sender = senders.find((s) => s.track?.kind === track.kind);
-              if (!sender) {
-                pc.addTrack(track, stream);
-                console.log(`Added ${track.kind} track to peer connection ${data.from}`);
-              }
-            });
-          }
-          
-          // Prevent duplicate operations
-          const descState = peerDescriptionState.current[data.from];
-          
-          // Check if remote description already set
-          if (descState?.hasRemoteDesc) {
-            console.warn(`Remote description already set for ${data.from}, ignoring duplicate offer`);
-            return;
-          }
-          
-          // Validate signaling state before setting remote offer
-          if (pc.signalingState !== "stable" && pc.signalingState !== "have-local-offer") {
-            console.warn(`Cannot set remote offer in state ${pc.signalingState}, expected stable or have-local-offer`);
-            return;
-          }
-          
-          console.log(`Setting remote offer from ${data.from}, signaling state: ${pc.signalingState}`);
-          await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-          descState.hasRemoteDesc = true;
-          console.log(`Remote description set, signaling state: ${pc.signalingState}`);
-          
-          // Only create answer if we haven't already sent an offer and signaling state is correct
-          if (!descState.hasLocalDesc && pc.signalingState === "have-remote-offer") {
-            console.log(`Creating answer for ${data.from}`);
-            const answer = await pc.createAnswer();
-            console.log(`Answer created, setting local description for ${data.from}, state: ${pc.signalingState}`);
-            
-            // Double-check state before setLocalDescription
-            if (pc.signalingState !== "have-remote-offer") {
-              console.error(`State changed before setLocalDescription! Now: ${pc.signalingState}`);
-              return;
-            }
-            
-            await pc.setLocalDescription(answer);
-            descState.hasLocalDesc = true;
-            console.log(`Local description set, signaling state: ${pc.signalingState}`);
-            
-            console.log(`Sending answer to ${data.from}`);
-            socket.emit("answer", { meetingId: id, answer, to: data.from });
-          } else {
-            console.log(`Skipping answer: hasLocalDesc=${descState.hasLocalDesc}, state=${pc.signalingState}`);
-          }
-        } finally {
-          peerProcessing.current[data.from] = false;
-        }
+        console.log("Received offer from:", data.from);
+        const pc = createPeerConnection(data.from);
+        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit("answer", { meetingId: id, answer, to: data.from });
+        console.log("Sent answer to:", data.from);
       } catch (err) {
         console.error("Error handling offer:", err);
-        if (data?.from) {
-          delete peerDescriptionState.current[data.from];
-          peerProcessing.current[data.from] = false;
-        }
-        setCallError(`WebRTC error: ${err.message}`);
       }
     });
 
     socket.on("answer", async (data) => {
+      if (data.from === socket.id) return;
       try {
-        if (data.from === socket.id) return;
-        console.log(`Received answer from ${data.from}`);
-        
-        // Prevent concurrent processing
-        if (peerProcessing.current[data.from]) {
-          console.log(`Already processing for ${data.from}, skipping answer`);
-          return;
-        }
-        peerProcessing.current[data.from] = true;
-        
-        try {
-          const pc = peerConnections.current[data.from];
-          if (!pc) {
-            console.warn(`No peer connection found for ${data.from} when receiving answer`);
-            return;
-          }
-          
-          if (pc.connectionState === "closed" || pc.connectionState === "failed") {
-            console.warn(`Peer connection ${data.from} is ${pc.connectionState}, ignoring answer`);
-            return;
-          }
-          
-          // Check if we already have remote description
-          const descState = peerDescriptionState.current[data.from];
-          if (descState?.hasRemoteDesc) {
-            console.warn(`Remote description already set for ${data.from}, ignoring duplicate answer`);
-            return;
-          }
-          
-          // Answer can only be set when we have a local offer
-          console.log(`Signaling state for answer from ${data.from}: ${pc.signalingState}`);
-          if (pc.signalingState !== "have-local-offer") {
-            console.warn(`Cannot set remote answer in state ${pc.signalingState}, expected have-local-offer`);
-            return;
-          }
-          
-          console.log(`Setting remote description for answer from ${data.from}`);
+        console.log("Received answer from:", data.from);
+        const pc = peerConnections.current[data.from];
+        if (pc) {
           await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-          if (descState) {
-            descState.hasRemoteDesc = true;
-          }
-          console.log(`Remote answer set successfully, signaling state: ${pc.signalingState}`);
-        } finally {
-          peerProcessing.current[data.from] = false;
+          console.log("Remote description set for:", data.from);
         }
       } catch (err) {
         console.error("Error handling answer:", err);
-        if (data?.from) {
-          delete peerDescriptionState.current[data.from];
-          peerProcessing.current[data.from] = false;
-        }
-        setCallError(`WebRTC error: ${err.message}`);
       }
     });
 
     socket.on("ice-candidate", async (data) => {
+      if (data.from === socket.id) return;
       try {
-        if (data.from === socket.id) return;
-        let pc = peerConnections.current[data.from];
-        
-        if (!pc) {
-          console.warn(`No peer connection for ${data.from}, cannot add ICE candidate yet. Waiting for offer/answer.`);
-          return;
-        }
-        
-        if (data.candidate) {
-          if (pc.connectionState !== "closed" && pc.connectionState !== "failed") {
-            try {
-              await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-              console.log(`Added ICE candidate from ${data.from}`);
-            } catch (err) {
-              if (err.name !== "InvalidStateError") {
-                console.error("Error adding ICE candidate:", err);
-              }
-            }
-          }
+        const pc = peerConnections.current[data.from];
+        if (pc && data.candidate) {
+          await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
         }
       } catch (err) {
-        console.error("Error in ice-candidate handler:", err);
+        console.error("Error adding ICE candidate:", err);
       }
     });
 
@@ -536,11 +388,9 @@ export default function MeetingPage({ params }) {
     socket.on("transcript-update", (data) => {
       const { entry } = data;
       if (entry && entry.name && entry.say) {
-        console.log(`Received transcript from ${entry.name}: ${entry.say}`);
         setTranscript((prev) => {
-          // Avoid duplicates
           const isDuplicate = prev.some(
-            (t) => t.name === entry.name && t.say === entry.say && t.timestamp === entry.timestamp
+            (t) => t.name === entry.name && t.say === entry.say
           );
           if (isDuplicate) return prev;
           return [...prev, entry];
@@ -555,97 +405,76 @@ export default function MeetingPage({ params }) {
       setRemoteStreams({});
       socket.disconnect();
     };
-  }, [meeting?.id, meeting?.status, accessDenied, currentUser, id]);
+  }, [meeting?.id, meeting?.status, accessDenied, currentUser, id, createPeerConnection]);
 
   const startCall = async () => {
     if (!currentUser || !socketRef.current) return;
+    
     try {
-      console.log("Starting call...");
-      const stream = await getLocalStream(true);
-      console.log(`Got local stream with ${stream.getTracks().length} tracks`);
+      let stream = localStreamRef.current;
+      if (!stream) {
+        stream = await getLocalStream(true);
+      }
 
-      // Find other participants from socket that we haven't connected to yet
+      // Send offer to each connected participant
       const others = participants.filter((p) => p.user_id !== currentUser.id && p.socketId);
-      console.log(`Found ${others.length} other participants to connect to`);
-      
       for (const p of others) {
         if (!peerConnections.current[p.socketId]) {
-          console.log(`Creating connection and sending offer to ${p.users?.name}`);
-          try {
-            const pc = createPeerConnection(p.socketId, stream);
-            const socketId = p.socketId;
-            peerDescriptionState.current[socketId] = { hasLocalDesc: false, hasRemoteDesc: false };
-            
-            console.log(`Created peer connection, signaling state: ${pc.signalingState}`);
-            
-            const offer = await pc.createOffer();
-            console.log(`Offer created, setting local description for ${p.users?.name}`);
-            
-            await pc.setLocalDescription(offer);
-            peerDescriptionState.current[socketId].hasLocalDesc = true;
-            console.log(`Local description set, signaling state: ${pc.signalingState}`);
-            
-            socketRef.current.emit("offer", {
-              meetingId: id,
-              offer,
-              to: p.socketId,
+          const pc = createPeerConnection(p.socketId);
+          
+          // Add all tracks from local stream to peer connection
+          if (stream) {
+            stream.getTracks().forEach((track) => {
+              pc.addTrack(track, stream);
             });
-            console.log(`Sent offer to ${p.users?.name}`);
-          } catch (err) {
-            console.error(`Error creating offer for ${p.users?.name}:`, err);
-            delete peerDescriptionState.current[p.socketId];
-            setCallError(`Failed to connect to ${p.users?.name}: ${err.message}`);
           }
+          
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          socketRef.current.emit("offer", {
+            meetingId: id,
+            offer,
+            to: p.socketId,
+          });
         }
       }
     } catch (err) {
-      console.error("Error in startCall:", err);
+      console.error("Error starting call:", err);
       setCallError(`Failed to start call: ${err.message}`);
     }
   };
 
+  // STT
   const initializeSTT = useCallback(() => {
     if (typeof window === "undefined" || recognitionRef.current) return;
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      console.warn("Speech Recognition not supported in this browser");
-      return;
-    }
+    if (!SpeechRecognition) return;
 
-    console.log("Initializing Speech Recognition...");
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = false;
     recognition.lang = "en-US";
 
-    recognition.onstart = () => {
-      console.log("STT: Listening started");
-      sttRunningRef.current = true;
-    };
+    recognition.onstart = () => { sttRunningRef.current = true; };
 
     recognition.onresult = (event) => {
       let finalTranscript = "";
-
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const text = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += text + " ";
+          finalTranscript += event.results[i][0].transcript + " ";
         }
       }
 
       if (finalTranscript.trim()) {
-        console.log("Final transcript:", finalTranscript);
         const newEntry = {
           name: currentUser?.name || "Unknown",
           say: finalTranscript.trim(),
         };
-        
-        // Add to local transcript
+
         setTranscript((prev) => {
           const updated = [...prev, newEntry];
-          
-          // Emit to other participants via Socket.io
+
           if (socketRef.current?.connected) {
             socketRef.current.emit("transcript-update", {
               meetingId: id,
@@ -653,17 +482,10 @@ export default function MeetingPage({ params }) {
             });
           }
 
-          // Auto-save to Supabase (debounced)
-          if (sttTimeoutRef.current) {
-            clearTimeout(sttTimeoutRef.current);
-          }
+          if (sttTimeoutRef.current) clearTimeout(sttTimeoutRef.current);
           sttTimeoutRef.current = setTimeout(async () => {
             try {
-              await supabase
-                .from("meetings")
-                .update({ transcript: updated })
-                .eq("id", id);
-              console.log("Transcript saved to Supabase");
+              await supabase.from("meetings").update({ transcript: updated }).eq("id", id);
             } catch (err) {
               console.error("Error saving transcript:", err);
             }
@@ -674,87 +496,59 @@ export default function MeetingPage({ params }) {
       }
     };
 
-    recognition.onerror = (event) => {
-      console.error("STT error:", event.error);
-      sttRunningRef.current = false;
-    };
-
-    recognition.onend = () => {
-      console.log("STT: Listening ended");
-      sttRunningRef.current = false;
-    };
-
+    recognition.onerror = () => { sttRunningRef.current = false; };
+    recognition.onend = () => { sttRunningRef.current = false; };
     recognitionRef.current = recognition;
   }, [currentUser, id]);
 
-  // Start/stop STT based on meeting state and mic status
   useEffect(() => {
     if (!meeting || meeting.status !== "active" || !currentUser || !localStream) return;
-    
+
     const audioTracks = localStream.getAudioTracks();
     const hasAudio = audioTracks.length > 0 && audioTracks[0].enabled;
 
     if (hasAudio && !isMuted) {
-      // Initialize if not already done
-      if (!recognitionRef.current) {
-        initializeSTT();
-      }
-
-      // Start only if not already running
+      if (!recognitionRef.current) initializeSTT();
       if (recognitionRef.current && !sttRunningRef.current) {
-        try {
-          console.log("Starting STT...");
-          recognitionRef.current.start();
-        } catch (err) {
-          console.error("Error starting STT:", err);
-        }
+        try { recognitionRef.current.start(); } catch (_) {}
       }
     } else {
-      // Stop STT if muted or no audio
       if (recognitionRef.current && sttRunningRef.current) {
-        try {
-          console.log("Stopping STT...");
-          recognitionRef.current.stop();
-          sttRunningRef.current = false;
-        } catch (err) {
-          console.error("Error stopping STT:", err);
-        }
+        try { recognitionRef.current.stop(); sttRunningRef.current = false; } catch (_) {}
       }
     }
 
     return () => {
       if (recognitionRef.current && sttRunningRef.current) {
-        try {
-          recognitionRef.current.stop();
-          sttRunningRef.current = false;
-        } catch (err) {
-          console.error("Error stopping STT on cleanup:", err);
-        }
+        try { recognitionRef.current.stop(); sttRunningRef.current = false; } catch (_) {}
       }
     };
   }, [meeting?.status, currentUser, localStream, isMuted, initializeSTT]);
 
-  const handleToggleMic = async () => { 
-    await toggleMic();
-  };
+  const handleToggleMic = async () => { await toggleMic(); };
   const handleToggleVideo = async () => { await toggleVideo(); };
+  
+  const handleStartCall = async () => {
+    try {
+      await startCall();
+    } catch (err) {
+      console.error("Error starting call:", err);
+      setCallError(`Failed to start call: ${err.message}`);
+    }
+  };
 
   const handleEndMeeting = async () => {
     setEnding(true);
     const endedAt = new Date().toISOString();
     try {
-      // Stop STT
       if (recognitionRef.current && sttRunningRef.current) {
         recognitionRef.current.stop();
         sttRunningRef.current = false;
       }
-
       const stream = localStreamRef.current;
       if (stream) stream.getTracks().forEach((t) => t.stop());
       Object.values(peerConnections.current).forEach((pc) => pc.close());
       peerConnections.current = {};
-      peerDescriptionState.current = {};
-      peerProcessing.current = {};
       setRemoteStreams({});
 
       socketRef.current?.emit("end-meeting", { meetingId: id });
@@ -770,18 +564,14 @@ export default function MeetingPage({ params }) {
   };
 
   const handleLeaveMeeting = () => {
-    // Stop STT
     if (recognitionRef.current && sttRunningRef.current) {
       recognitionRef.current.stop();
       sttRunningRef.current = false;
     }
-
     const stream = localStreamRef.current;
     if (stream) stream.getTracks().forEach((t) => t.stop());
     Object.values(peerConnections.current).forEach((pc) => pc.close());
     peerConnections.current = {};
-    peerDescriptionState.current = {};
-    peerProcessing.current = {};
     socketRef.current?.emit("leave-meeting", { meetingId: id });
     router.push("/discussion/meetings");
   };
@@ -811,7 +601,6 @@ export default function MeetingPage({ params }) {
 
   if (!meeting) return <p className="p-6 text-center">Meeting not found</p>;
 
-  // Ended meeting view
   if (meeting.status !== "active") {
     const startedAt = meeting.started_at ? new Date(meeting.started_at) : null;
     const endedAt = meeting.ended_at ? new Date(meeting.ended_at) : null;
@@ -841,10 +630,10 @@ export default function MeetingPage({ params }) {
               <div key={idx} className="flex items-center gap-2">
                 <Avatar size="sm">
                   {p.users?.pic ? <Avatar.Image src={p.users.pic} alt={p.users.name} /> : null}
-                  <Avatar.Fallback>{p.users?.name?.charAt(0) || p.name?.charAt(0) || "?"}</Avatar.Fallback>
+                  <Avatar.Fallback>{p.users?.name?.charAt(0) || "?"}</Avatar.Fallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm font-medium">{p.users?.name || p.name || "Unknown"}</p>
+                  <p className="text-sm font-medium">{p.users?.name || "Unknown"}</p>
                   <p className="text-xs text-muted">
                     {p.joined_at ? new Date(p.joined_at).toLocaleTimeString() : ""}
                     {p.left_at ? ` - ${new Date(p.left_at).toLocaleTimeString()}` : ""}
@@ -876,7 +665,6 @@ export default function MeetingPage({ params }) {
     );
   }
 
-  // Active meeting view
   const activeParticipants = participants.filter((p) => !p.left_at);
   const participantName = (p) => p.users?.name || p.name || "Unknown";
   const participantPic = (p) => p.users?.pic || p.pic;
@@ -914,7 +702,7 @@ export default function MeetingPage({ params }) {
         {Object.entries(remoteStreams).map(([peerSocketId, stream]) => {
           const participant = participants.find((p) => p.socketId === peerSocketId);
           return (
-            <Card key={peerSocketId} className="min-w-[160px] border-2 border-default text-center">
+            <Card key={peerSocketId} className="min-w-[160px] border-2 border-success text-center">
               <Card.Content className="p-3">
                 <div className="mb-2 flex h-20 w-full items-center justify-center overflow-hidden rounded-md bg-default-100">
                   <video ref={(el) => { if (el) el.srcObject = stream; }} autoPlay playsInline className="h-full w-full object-cover" />
@@ -946,7 +734,7 @@ export default function MeetingPage({ params }) {
           {!localStream ? <Mic size={40} /> : <Camera size={40} />}
           <p className="text-lg font-semibold">{meeting.title}</p>
           <p className="text-sm text-muted">{activeParticipants.length} participant{activeParticipants.length !== 1 ? "s" : ""}</p>
-          {!localStream && <Button onPress={startCall} className="mt-2">Join Call</Button>}
+          {!localStream && <Button onPress={handleStartCall} className="mt-2">Join Call</Button>}
         </div>
       </div>
 
