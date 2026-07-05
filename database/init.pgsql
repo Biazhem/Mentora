@@ -264,6 +264,7 @@ CREATE TABLE public.meetings (
   transcript jsonb DEFAULT '[]'::jsonb,
   daily_room_name text,
   daily_room_url text,
+  summery text NOT NULL DEFAULT ''::text,
   CONSTRAINT meetings_pkey PRIMARY KEY (id),
   CONSTRAINT meetings_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.organizations(id),
   CONSTRAINT meetings_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.users(id)

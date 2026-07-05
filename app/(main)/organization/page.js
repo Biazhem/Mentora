@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 export default function OrganizationsPage() {
   const [search, setSearch] = useState("");
   const [industry, setIndustry] = useState("all");
+  const [locationFilter, setLocationFilter] = useState("");
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,10 +37,15 @@ export default function OrganizationsPage() {
   ];
 
   const filteredOrganizations = organizations.filter((org) => {
-    return (
-      org.org_name.toLowerCase().includes(search.toLowerCase()) &&
-      (industry === "all" || org.company_type === industry)
-    );
+    const matchesSearch =
+      org.org_name.toLowerCase().includes(search.toLowerCase());
+    const matchesIndustry = industry === "all" || org.company_type === industry;
+    const matchesLocation =
+      !locationFilter ||
+      (org.city || "").toLowerCase().includes(locationFilter.toLowerCase()) ||
+      (org.country || "").toLowerCase().includes(locationFilter.toLowerCase());
+
+    return matchesSearch && matchesIndustry && matchesLocation;
   });
 
   return (
@@ -65,10 +71,21 @@ export default function OrganizationsPage() {
             className="w-fit"
           />
         </InputGroup>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <InputGroup>
+            <InputGroup.Prefix>
+              <Search className="size-4" />
+            </InputGroup.Prefix>
+            <InputGroup.Input
+              placeholder="Location"
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+              className="w-fit"
+            />
+          </InputGroup>
           <Select
-            onValueChange={setIndustry}
-            defaultValue="all"
+            selectedKey={industry}
+            onSelectionChange={(key) => setIndustry(key || "all")}
             className="min-w-[160px]"
           >
             <Select.Trigger>

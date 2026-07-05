@@ -119,8 +119,8 @@ export default function MentorsPage() {
             <Trash />
           </Button>
           <Select
-            onValueChange={setExpertiseFilter}
-            defaultValue="all"
+            selectedKey={expertiseFilter}
+            onSelectionChange={(key) => setExpertiseFilter(key || "all")}
             className="min-w-[180px]"
           >
             <Select.Trigger>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@heroui/react";
 import Link from "next/link";
-import { Plus, Search, Trash } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@clerk/nextjs";
 import { useOrgSelectorStore } from "@/stores/org-selector";
@@ -17,6 +17,7 @@ export default function JobsPage() {
   );
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [timingFilter, setTimingFilter] = useState("all");
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -88,8 +89,9 @@ export default function JobsPage() {
       job.title.toLowerCase().includes(search.toLowerCase()) ||
       job.company.toLowerCase().includes(search.toLowerCase());
     const matchesType = typeFilter === "all" || job.type === typeFilter;
+    const matchesTiming = timingFilter === "all" || job.timing === timingFilter;
 
-    return matchesSearch && matchesType;
+    return matchesSearch && matchesType && matchesTiming;
   });
 
   return (
@@ -126,12 +128,9 @@ export default function JobsPage() {
           )}
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button isIconOnly variant="danger-soft" onPress={() => setTypeFilter("all")}>
-            <Trash />
-          </Button>
           <Select
-            onValueChange={setTypeFilter}
-            defaultValue="all"
+            selectedKey={typeFilter}
+            onSelectionChange={(key) => setTypeFilter(key || "all")}
             className="min-w-[140px]"
           >
             <Select.Trigger>
@@ -158,6 +157,36 @@ export default function JobsPage() {
                 </ListBox.Item>
                 <ListBox.Item id="internship" textValue="Internship">
                   Internship
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+              </ListBox>
+            </Select.Popover>
+          </Select>
+          <Select
+            selectedKey={timingFilter}
+            onSelectionChange={(key) => setTimingFilter(key || "all")}
+            className="min-w-[160px]"
+          >
+            <Select.Trigger>
+              <Select.Value />
+              <Select.Indicator />
+            </Select.Trigger>
+            <Select.Popover>
+              <ListBox>
+                <ListBox.Item id="all" textValue="All Workplaces">
+                  All Workplaces
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+                <ListBox.Item id="remote" textValue="Remote">
+                  Remote
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+                <ListBox.Item id="hybrid" textValue="Hybrid">
+                  Hybrid
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+                <ListBox.Item id="onsite" textValue="On-site">
+                  On-site
                   <ListBox.ItemIndicator />
                 </ListBox.Item>
               </ListBox>

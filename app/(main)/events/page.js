@@ -281,8 +281,8 @@ export default function EventsPage() {
 
         <div className="flex gap-2 flex-wrap">
           <Select
-            onValueChange={setTypeFilter}
-            defaultValue="all"
+            selectedKey={typeFilter}
+            onSelectionChange={(key) => setTypeFilter(key || "all")}
             className="min-w-[140px]"
           >
             <Select.Trigger>
@@ -291,11 +291,26 @@ export default function EventsPage() {
             </Select.Trigger>
             <Select.Popover>
               <ListBox>
-                <ListBox.Item value="all">All Types</ListBox.Item>
-                <ListBox.Item value="Hackathon">Hackathon</ListBox.Item>
-                <ListBox.Item value="Webinar">Webinar</ListBox.Item>
-                <ListBox.Item value="Workshop">Workshop</ListBox.Item>
-                <ListBox.Item value="Meetup">Meetup</ListBox.Item>
+                <ListBox.Item id="all" textValue="All Types">
+                  All Types
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+                <ListBox.Item id="Hackathon" textValue="Hackathon">
+                  Hackathon
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+                <ListBox.Item id="Webinar" textValue="Webinar">
+                  Webinar
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+                <ListBox.Item id="Workshop" textValue="Workshop">
+                  Workshop
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+                <ListBox.Item id="Meetup" textValue="Meetup">
+                  Meetup
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
               </ListBox>
             </Select.Popover>
           </Select>

@@ -5,7 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import { supabase } from "@/lib/supabase";
 import { useOrgSelectorStore } from "@/stores/org-selector";
 import { useRouter } from "next/navigation";
-import { Button } from "@heroui/react";
+import { Button, InputGroup } from "@heroui/react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Card, Chip, Alert } from "@heroui/react";
@@ -19,6 +19,7 @@ export default function Meeting() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [meetingTitle, setMeetingTitle] = useState("");
 
   useEffect(() => {
     async function checkAdmin() {
@@ -77,6 +78,8 @@ export default function Meeting() {
   const handleCreateMeeting = async () => {
     if (!user || !selectedOrganizationId) return;
 
+    const title = meetingTitle.trim() || "New Meeting";
+
     setCreating(true);
     setCreateError("");
     try {
@@ -93,7 +96,7 @@ export default function Meeting() {
         .insert({
           org_id: selectedOrganizationId,
           host_id: userData.id,
-          title: "New Meeting",
+          title,
           status: "active",
         })
         .select("id")
@@ -131,12 +134,22 @@ export default function Meeting() {
             Learn, discuss, and grow with Meetups
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           {isAdmin && (
-            <Button onClick={handleCreateMeeting} isLoading={creating}>
-              <Plus className="mr-2" />
-              Create Meeting
-            </Button>
+            <>
+              <InputGroup>
+                <InputGroup.Input
+                  placeholder="Meeting title"
+                  value={meetingTitle}
+                  onChange={(e) => setMeetingTitle(e.target.value)}
+                  className="w-[200px]"
+                />
+              </InputGroup>
+              <Button onClick={handleCreateMeeting} isLoading={creating}>
+                <Plus className="mr-2" />
+                Create Meeting
+              </Button>
+            </>
           )}
         </div>
       </div>

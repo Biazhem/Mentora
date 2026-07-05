@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { ArrowLeft, Camera, CameraOff, Mic, MicOff, PhoneOff, Users } from "lucide-react";
 import { io } from "socket.io-client";
+import SummaryMDX from "@/components/custom/SummaryMDX";
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001";
 const ICE_SERVERS = {
@@ -39,10 +40,15 @@ export default function MeetingPage({ params }) {
   const [loading, setLoading] = useState(true);
   const [ending, setEnding] = useState(false);
   const [isHost, setIsHost] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [transcript, setTranscript] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [accessDenied, setAccessDenied] = useState(false);
   const [callError, setCallError] = useState("");
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [summary, setSummary] = useState("");
+  const [generatingSummary, setGeneratingSummary] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(true);
   const [localStream, setLocalStream] = useState(null);
@@ -231,7 +237,9 @@ export default function MeetingPage({ params }) {
         setCurrentUser(userData);
         setMeeting(meetingData);
         setTranscript(Array.isArray(meetingData.transcript) ? meetingData.transcript : []);
+        setSummary(meetingData.summery || "");
         setIsHost(meetingData.host_id === userData.id);
+        setIsAdmin(memberData.role === "admin");
         await fetchParticipants();
         if (meetingData.status === "active" && !joinedRef.current) {
           joinedRef.current = true;
@@ -527,6 +535,42 @@ export default function MeetingPage({ params }) {
 
   const handleToggleMic = async () => { await toggleMic(); };
   const handleToggleVideo = async () => { await toggleVideo(); };
+
+  const handleSaveTitle = async () => {
+    if (!newTitle.trim() || newTitle === meeting.title) {
+      setEditingTitle(false);
+      return;
+    }
+    const { error } = await supabase
+      .from("meetings")
+      .update({ title: newTitle.trim() })
+      .eq("id", id);
+    if (!error) {
+      setMeeting((prev) => prev ? { ...prev, title: newTitle.trim() } : prev);
+    }
+    setEditingTitle(false);
+  };
+
+  const handleGenerateSummary = async () => {
+    if (!transcript || transcript.length === 0) return;
+    setGeneratingSummary(true);
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript, meetingId: id }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setSummary(data.summary);
+      await supabase.from("meetings").update({ summery: data.summary }).eq("id", id);
+    } catch (err) {
+      console.error("Summary error:", err);
+      setCallError(`Failed to generate summary: ${err.message}`);
+    } finally {
+      setGeneratingSummary(false);
+    }
+  };
   
   const handleStartCall = async () => {
     try {
@@ -612,7 +656,28 @@ export default function MeetingPage({ params }) {
           <ArrowLeft className="size-4" /> Back to Meetings
         </Link>
         <Card className="p-6">
-          <h1 className="text-2xl font-bold mb-2">{meeting.title}</h1>
+          {editingTitle ? (
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                autoFocus
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSaveTitle(); if (e.key === "Escape") setEditingTitle(false); }}
+                onBlur={handleSaveTitle}
+                className="text-2xl font-bold bg-background border border-default rounded px-2 py-1 outline-none flex-1"
+              />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mb-2">
+              <h1 className="text-2xl font-bold">{meeting.title}</h1>
+              {(isHost || isAdmin) && (
+                <button
+                  onClick={() => { setNewTitle(meeting.title); setEditingTitle(true); }}
+                  className="text-xs text-muted hover:text-foreground"
+                >Edit</button>
+              )}
+            </div>
+          )}
           <div className="flex flex-wrap gap-2 mb-4">
             <Chip color="default">{meeting.status || "Ended"}</Chip>
             <Chip>{meeting.organizations?.org_name || "Organization"}</Chip>
@@ -661,6 +726,21 @@ export default function MeetingPage({ params }) {
             <p className="text-muted text-sm">No transcript available.</p>
           </Card>
         )}
+        <Card className="p-6">
+          <h2 className="text-lg font-bold mb-3">Summary</h2>
+          {summary ? (
+            <SummaryMDX source={summary} />
+          ) : transcript.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              <p className="text-muted text-sm">No summary yet.</p>
+              <Button variant="secondary" onPress={handleGenerateSummary} isLoading={generatingSummary}>
+                Generate Summary
+              </Button>
+            </div>
+          ) : (
+            <p className="text-muted text-sm">No transcript to summarize.</p>
+          )}
+        </Card>
       </div>
     );
   }
@@ -676,7 +756,29 @@ export default function MeetingPage({ params }) {
         <Link href="/discussion/meetings" className="flex items-center gap-1 text-sm text-muted hover:text-foreground">
           <ArrowLeft className="size-4" /> Back
         </Link>
-        <Chip color="success">Live</Chip>
+        {editingTitle ? (
+          <div className="flex items-center gap-1">
+            <input
+              autoFocus
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSaveTitle(); if (e.key === "Escape") setEditingTitle(false); }}
+              onBlur={handleSaveTitle}
+              className="text-sm font-medium bg-background border border-default rounded px-2 py-1 outline-none"
+            />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">{meeting.title}</p>
+            {(isHost || isAdmin) && (
+              <button
+                onClick={() => { setNewTitle(meeting.title); setEditingTitle(true); }}
+                className="text-xs text-muted hover:text-foreground"
+              >Edit</button>
+            )}
+            <Chip color="success">Live</Chip>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2 overflow-x-auto p-2">
