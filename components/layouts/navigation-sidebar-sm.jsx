@@ -81,7 +81,7 @@ export function NavigationSidebarSmall() {
       <Drawer.Trigger>
         <Button
           isIconOnly
-          size="sm"
+          size="lg"
           variant="tertiary"
           className="lg:hidden"
           aria-label="Open navigation menu"

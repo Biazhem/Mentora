@@ -136,7 +136,7 @@ export function MinimaDashboard({ children }) {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 min-w-0 p-5 bg-background m-3 rounded-3xl shadow-sm lg:ml-[92px] space-y-3">
+      <main className="flex-1 min-w-0 ml-0 p-2 lg:p-5 bg-background m-3 rounded-3xl shadow-sm lg:ml-[92px] space-y-3">
         <MainHeader
           imageUrl={imageUrl}
           fallbackInitials={fallbackInitials}

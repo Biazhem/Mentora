@@ -91,10 +91,6 @@ export function MentorDrawer({ mentor }) {
                   <p className="font-medium">{mentor.institute || "Not specified"}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-foreground">Phone</p>
-                  <p className="font-medium">{mentor.phone || "Not provided"}</p>
-                </div>
-                <div>
                   <p className="text-sm text-foreground">Email</p>
                   <p className="font-medium">{mentor.email || "Not provided"}</p>
                 </div>

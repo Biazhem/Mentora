@@ -84,7 +84,7 @@ export default function MainHeader({
     <div className="w-full flex justify-between items-center h-10">
       <div className="flex items-center gap-2">
         <NavigationSidebarSmall />
-        <Breadcrumbs>
+        <Breadcrumbs className="hidden sm:flex">
           <Breadcrumbs.Item href="/">Home</Breadcrumbs.Item>
           {breadcrumbs.map((item, index) => {
             const isLast = index === breadcrumbs.length - 1;
@@ -195,6 +195,9 @@ export default function MainHeader({
                       <p className="text-muted text-sm">
                         {isLoaded ? emailAddress : ""}
                       </p>
+                      <Link href={"/profile"}>
+                        <Button>Profile</Button>
+                      </Link>
                     </div>
                   </div>
                 </div>
