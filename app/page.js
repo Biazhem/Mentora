@@ -166,13 +166,13 @@ export default function HomePage() {
               </Chip>
 
               <h1 className="text-4xl font-extrabold tracking-tight md:text-6xl lg:text-7xl">
-                Bridge the Gap Between{" "}
+                Build Skills. Find Mentors{" "}
                 <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  Learning
+                  Launch
                 </span>{" "}
-                and{" "}
+                your{" "}
                 <span className="bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
-                  Earning
+                  Career
                 </span>
               </h1>
 
@@ -432,7 +432,7 @@ export default function HomePage() {
                 opportunities, and manage your tasks like a pro.
               </p>
               <div className="flex flex-wrap justify-center gap-4">
-                <Link href="/sign-up">
+                <Link href="/sign-in">
                   <Button size="lg" variant="secondary" className="gap-2 group">
                     Create Free Account
                     <ChevronRight className="size-5 transition-transform group-hover:translate-x-1" />

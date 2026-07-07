@@ -91,7 +91,7 @@ export default function MentorsPage() {
       </div>
 
       <div className="mb-8 flex justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-col md:flex-row *:w-full">
           <InputGroup>
             <InputGroup.Prefix>
               <Search className="size-4" />

@@ -127,7 +127,7 @@ export default function Meeting() {
 
   return (
     <div className="container py-10">
-      <div className="mb-8 flex justify-between items-center">
+      <div className="mb-8 flex justify-between items-center flex-col md:flex-row *:w-full">
         <div>
           <h1 className="text-2xl font-semibold">Recent Meetings</h1>
           <p className="text-sm text-muted">

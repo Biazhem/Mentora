@@ -104,7 +104,7 @@ export default function JobsPage() {
       </div>
 
       <div className="px-4 mb-8 flex justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-col md:flex-row *:w-full md:*:w-auto">
           <InputGroup>
             <InputGroup.Prefix>
               <Search className="size-4" />

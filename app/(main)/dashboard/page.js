@@ -344,10 +344,10 @@ export default function DashboardPage() {
   const d = dashboardData;
 
   return (
-    <div className="py-12 px-4 space-y-6">
+    <div className="py-6 px-3 sm:py-12 sm:px-4 space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-muted">
+        <h1 className="text-xl sm:text-2xl font-semibold">Dashboard</h1>
+        <p className="text-xs sm:text-sm text-muted">
           {userRole === "admin"
             ? "Overview of your organization"
             : userRole === "student"
@@ -359,7 +359,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         {userRole === "admin" && (
           <>
             <StatCard icon={Users} label="Members" value={d.memberCount || 0} color="accent" href={`/organization/${selectedOrganizationId}`} />
