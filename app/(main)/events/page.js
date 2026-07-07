@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Trash } from "lucide-react";
 import { ArrowUpRight } from "lucide-react";
 import {
   Modal,
@@ -226,6 +226,25 @@ export default function EventsPage() {
       setMessage("Failed to register. Please try again.");
     } finally {
       setRegistering(null);
+      setTimeout(() => setMessage(""), 3000);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId) => {
+    try {
+      const { error } = await supabase
+        .from("events")
+        .delete()
+        .eq("id", eventId);
+
+      if (error) throw error;
+
+      setEvents((prev) => prev.filter((e) => e.id !== eventId));
+      setMessage("Event deleted successfully.");
+    } catch (err) {
+      console.error("Delete error:", err);
+      setMessage("Failed to delete event.");
+    } finally {
       setTimeout(() => setMessage(""), 3000);
     }
   };
@@ -524,6 +543,15 @@ export default function EventsPage() {
                         <Button slot="close" variant="secondary">
                           Close
                         </Button>
+                        {isAdmin && event.org_id === selectedOrganizationId && (
+                          <Button
+                            variant="danger"
+                            onPress={() => handleDeleteEvent(event.id)}
+                          >
+                            <Trash className="size-4" />
+                            Delete
+                          </Button>
+                        )}
                         {isAdmin && event.org_id === selectedOrganizationId ? (
                           <Button variant="secondary" isDisabled>
                             Your Organization

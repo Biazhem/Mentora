@@ -13,13 +13,17 @@ import {
   TextField,
   Typography,
 } from "@heroui/react";
+import { Card } from "@heroui/react";
+import { ArrowLeft } from "lucide-react";
 
 function GeneralForm({ formData, updateField, onLogoChange }) {
   return (
     <div className="space-y-2">
       <div>
         <Typography.Heading level={3}>General</Typography.Heading>
-        <Description>Tell us about your company&apos;s general info</Description>
+        <Description>
+          Tell us about your company&apos;s general info
+        </Description>
       </div>
       <div className="flex w-80 flex-col gap-4">
         <div className="relative flex flex-col items-center justify-center w-30 h-30 bg-accent-soft-hover rounded-lg border border-dashed border-muted/40 cursor-pointer hover:bg-accent-soft transition-colors group overflow-hidden">
@@ -30,19 +34,40 @@ function GeneralForm({ formData, updateField, onLogoChange }) {
             onChange={(e) => onLogoChange(e.target.files?.[0])}
           />
           {formData.orgLogo ? (
-            <img src={formData.orgLogo} alt="Logo preview" className="w-full h-full object-cover" />
+            <img
+              src={formData.orgLogo}
+              alt="Logo preview"
+              className="w-full h-full object-cover"
+            />
           ) : (
-            <span className="text-xs text-muted font-medium group-hover:text-primary transition-colors">Upload Logo</span>
+            <span className="text-xs text-muted font-medium group-hover:text-primary transition-colors">
+              Upload Logo
+            </span>
           )}
         </div>
         <TextField>
           <Label htmlFor="input-org-name">Organization Name</Label>
-          <Input id="input-org-name" placeholder="Acme Inc" fullWidth value={formData.orgName} onChange={(e) => updateField("orgName", e.target.value)} />
+          <Input
+            id="input-org-name"
+            placeholder="Acme Inc"
+            fullWidth
+            value={formData.orgName}
+            onChange={(e) => updateField("orgName", e.target.value)}
+          />
         </TextField>
         <TextField>
           <Label htmlFor="input-desc">Description</Label>
-          <TextArea id="input-desc" rows={4} fullWidth placeholder="Small description for company" value={formData.description} onChange={(e) => updateField("description", e.target.value)} />
-          <Description className="text-right text-xs">{formData.description.length}/30</Description>
+          <TextArea
+            id="input-desc"
+            rows={4}
+            fullWidth
+            placeholder="Small description for company"
+            value={formData.description}
+            onChange={(e) => updateField("description", e.target.value)}
+          />
+          <Description className="text-right text-xs">
+            {formData.description.length}/30
+          </Description>
         </TextField>
       </div>
     </div>
@@ -59,20 +84,45 @@ function DetailForm({ formData, updateField }) {
       <div className="flex w-80 flex-col gap-4">
         <TextField>
           <Label htmlFor="input-org-email">Organization Email</Label>
-          <Input id="input-org-email" placeholder="example@acme.com" fullWidth value={formData.orgEmail} onChange={(e) => updateField("orgEmail", e.target.value)} />
+          <Input
+            id="input-org-email"
+            placeholder="example@acme.com"
+            fullWidth
+            value={formData.orgEmail}
+            onChange={(e) => updateField("orgEmail", e.target.value)}
+          />
         </TextField>
         <TextField>
           <Label htmlFor="input-type-com">Type of company</Label>
-          <Input id="input-type-com" placeholder="e.g., Tech, Finance, Healthcare" fullWidth value={formData.companyType} onChange={(e) => updateField("companyType", e.target.value)} />
+          <Input
+            id="input-type-com"
+            placeholder="e.g., Tech, Finance, Healthcare"
+            fullWidth
+            value={formData.companyType}
+            onChange={(e) => updateField("companyType", e.target.value)}
+          />
         </TextField>
         <div className="grid grid-cols-2 gap-2">
           <TextField>
             <Label htmlFor="input-type-size">Company size</Label>
-            <Input id="input-type-size" type="number" placeholder="e.g., 50" fullWidth value={formData.companySize} onChange={(e) => updateField("companySize", e.target.value)} />
+            <Input
+              id="input-type-size"
+              type="number"
+              placeholder="e.g., 50"
+              fullWidth
+              value={formData.companySize}
+              onChange={(e) => updateField("companySize", e.target.value)}
+            />
           </TextField>
           <TextField>
             <Label htmlFor="input-type-strg">Company level</Label>
-            <Input id="input-type-strg" placeholder="e.g., large scale" fullWidth value={formData.companyLevel} onChange={(e) => updateField("companyLevel", e.target.value)} />
+            <Input
+              id="input-type-strg"
+              placeholder="e.g., large scale"
+              fullWidth
+              value={formData.companyLevel}
+              onChange={(e) => updateField("companyLevel", e.target.value)}
+            />
           </TextField>
         </div>
       </div>
@@ -85,34 +135,72 @@ function ContactForm({ formData, updateField }) {
     <div className="space-y-2">
       <div>
         <Typography.Heading level={3}>Contact</Typography.Heading>
-        <Description>Tell us about your company&apos;s contact info</Description>
+        <Description>
+          Tell us about your company&apos;s contact info
+        </Description>
       </div>
       <div className="flex w-80 flex-col gap-4">
         <TextField>
           <Label htmlFor="input-org-phone">Organization Phone</Label>
-          <Input id="input-org-phone" placeholder="+92 300 1234567" fullWidth value={formData.orgPhone} onChange={(e) => updateField("orgPhone", e.target.value)} />
+          <Input
+            id="input-org-phone"
+            placeholder="+92 300 1234567"
+            fullWidth
+            value={formData.orgPhone}
+            onChange={(e) => updateField("orgPhone", e.target.value)}
+          />
         </TextField>
         <TextField>
           <Label htmlFor="input-type-web">Website</Label>
-          <Input id="input-type-web" placeholder="acme.com" fullWidth value={formData.website} onChange={(e) => updateField("website", e.target.value)} />
+          <Input
+            id="input-type-web"
+            placeholder="acme.com"
+            fullWidth
+            value={formData.website}
+            onChange={(e) => updateField("website", e.target.value)}
+          />
         </TextField>
         <TextField>
           <Label htmlFor="input-type-addr">Country</Label>
-          <Input id="input-type-addr" placeholder="Pakistan" fullWidth value={formData.country} onChange={(e) => updateField("country", e.target.value)} />
+          <Input
+            id="input-type-addr"
+            placeholder="Pakistan"
+            fullWidth
+            value={formData.country}
+            onChange={(e) => updateField("country", e.target.value)}
+          />
         </TextField>
         <div className="grid grid-cols-2 gap-2">
           <TextField>
             <Label htmlFor="input-type-ct">City</Label>
-            <Input id="input-type-ct" placeholder="Islamabad" fullWidth value={formData.city} onChange={(e) => updateField("city", e.target.value)} />
+            <Input
+              id="input-type-ct"
+              placeholder="Islamabad"
+              fullWidth
+              value={formData.city}
+              onChange={(e) => updateField("city", e.target.value)}
+            />
           </TextField>
           <TextField>
             <Label htmlFor="input-type-pc">Postal code</Label>
-            <Input id="input-type-pc" placeholder="009560" fullWidth value={formData.postalCode} onChange={(e) => updateField("postalCode", e.target.value)} />
+            <Input
+              id="input-type-pc"
+              placeholder="009560"
+              fullWidth
+              value={formData.postalCode}
+              onChange={(e) => updateField("postalCode", e.target.value)}
+            />
           </TextField>
         </div>
         <TextField>
           <Label htmlFor="input-type-sa">Street Address</Label>
-          <TextArea id="input-type-sa" placeholder="thathaal street, near bla bla" fullWidth value={formData.streetAddress} onChange={(e) => updateField("streetAddress", e.target.value)} />
+          <TextArea
+            id="input-type-sa"
+            placeholder="thathaal street, near bla bla"
+            fullWidth
+            value={formData.streetAddress}
+            onChange={(e) => updateField("streetAddress", e.target.value)}
+          />
         </TextField>
       </div>
     </div>
@@ -135,31 +223,68 @@ function FounderForm({ formData, updateField, onFounderPhotoChange }) {
             onChange={(e) => onFounderPhotoChange(e.target.files?.[0])}
           />
           {formData.founderPhoto ? (
-            <img src={formData.founderPhoto} alt="Photo preview" className="w-full h-full object-cover" />
+            <img
+              src={formData.founderPhoto}
+              alt="Photo preview"
+              className="w-full h-full object-cover"
+            />
           ) : (
-            <span className="text-xs text-muted font-medium group-hover:text-primary transition-colors">Upload Photo</span>
+            <span className="text-xs text-muted font-medium group-hover:text-primary transition-colors">
+              Upload Photo
+            </span>
           )}
         </div>
         <TextField>
           <Label htmlFor="input-ceo-name">Full Name</Label>
-          <Input id="input-ceo-name" placeholder="Alex" fullWidth value={formData.founderName} onChange={(e) => updateField("founderName", e.target.value)} />
+          <Input
+            id="input-ceo-name"
+            placeholder="Alex"
+            fullWidth
+            value={formData.founderName}
+            onChange={(e) => updateField("founderName", e.target.value)}
+          />
         </TextField>
         <TextField>
           <Label htmlFor="input-ceo-email">Email</Label>
-          <Input id="input-ceo-email" placeholder="alex@em.com" fullWidth value={formData.founderEmail} onChange={(e) => updateField("founderEmail", e.target.value)} />
+          <Input
+            id="input-ceo-email"
+            placeholder="alex@em.com"
+            fullWidth
+            value={formData.founderEmail}
+            onChange={(e) => updateField("founderEmail", e.target.value)}
+          />
         </TextField>
         <TextField>
           <Label htmlFor="input-ceo-phone">Phone</Label>
-          <Input id="input-ceo-phone" type="text" placeholder="+92 301900008" fullWidth value={formData.founderPhone} onChange={(e) => updateField("founderPhone", e.target.value)} />
+          <Input
+            id="input-ceo-phone"
+            type="text"
+            placeholder="+92 301900008"
+            fullWidth
+            value={formData.founderPhone}
+            onChange={(e) => updateField("founderPhone", e.target.value)}
+          />
         </TextField>
         <div className="grid grid-cols-2 gap-2">
           <TextField>
             <Label htmlFor="input-ceo-gender">Gender</Label>
-            <Input id="input-ceo-gender" placeholder="Male" fullWidth value={formData.founderGender} onChange={(e) => updateField("founderGender", e.target.value)} />
+            <Input
+              id="input-ceo-gender"
+              placeholder="Male"
+              fullWidth
+              value={formData.founderGender}
+              onChange={(e) => updateField("founderGender", e.target.value)}
+            />
           </TextField>
           <TextField>
             <Label htmlFor="input-ceo-dob">Date of Birth</Label>
-            <Input id="input-ceo-dob" type="date" fullWidth value={formData.founderDob} onChange={(e) => updateField("founderDob", e.target.value)} />
+            <Input
+              id="input-ceo-dob"
+              type="date"
+              fullWidth
+              value={formData.founderDob}
+              onChange={(e) => updateField("founderDob", e.target.value)}
+            />
           </TextField>
         </div>
       </div>
@@ -307,30 +432,76 @@ export default function Page() {
   };
 
   return (
-    <div className="grid min-h-svh w-full grid-cols-1 lg:grid-cols-2 bg-accent-soft">
+    <div className="grid min-h-svh w-full grid-cols-1 lg:grid-cols-2 bg-accent-soft relative">
+      <Button className="absolute top-6 left-6" onClick={() => router.back()}>
+        <ArrowLeft />
+        Back
+      </Button>
       <div className="flex flex-col items-center justify-center p-6">
         <div className="flex w-80 flex-col gap-4">
-          {activeForm === 1 && <GeneralForm formData={formData} updateField={updateField} onLogoChange={handleLogoChange} />}
-          {activeForm === 2 && <DetailForm formData={formData} updateField={updateField} />}
-          {activeForm === 3 && <ContactForm formData={formData} updateField={updateField} />}
-          {activeForm === 4 && <FounderForm formData={formData} updateField={updateField} onFounderPhotoChange={handleFounderPhotoChange} />}
+          {activeForm === 1 && (
+            <GeneralForm
+              formData={formData}
+              updateField={updateField}
+              onLogoChange={handleLogoChange}
+            />
+          )}
+          {activeForm === 2 && (
+            <DetailForm formData={formData} updateField={updateField} />
+          )}
+          {activeForm === 3 && (
+            <ContactForm formData={formData} updateField={updateField} />
+          )}
+          {activeForm === 4 && (
+            <FounderForm
+              formData={formData}
+              updateField={updateField}
+              onFounderPhotoChange={handleFounderPhotoChange}
+            />
+          )}
 
           <div className="flex gap-2 items-center">
             {activeForm > 1 && (
-              <Button size="lg" fullWidth onClick={() => setActiveForm((prev) => prev - 1)} variant="tertiary">
+              <Button
+                size="lg"
+                fullWidth
+                onClick={() => setActiveForm((prev) => prev - 1)}
+                variant="tertiary"
+              >
                 Back
               </Button>
             )}
-            <Button size="lg" fullWidth onClick={handleNext} isLoading={loading}>
+            <Button
+              size="lg"
+              fullWidth
+              onClick={handleNext}
+              isLoading={loading}
+            >
               {activeForm === totalSteps ? "Complete" : "Next"}
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="relative hidden h-full w-full lg:block bg-background-secondary">
-        <img src="https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/docs/neo2.jpeg" alt="NEO Home Robot" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-linear-to-r from-background/10 to-transparent" />
+      <div className="hidden h-svh w-full lg:block bg-[url(/grad-1.png)] object-right p-8 pt-16">
+        <Typography.Heading level={3}>
+          Build your Organization Profile
+        </Typography.Heading>
+        <Typography.Paragraph>
+          To create your organization profile which requires the information about you
+          and your verified and valid information.
+        </Typography.Paragraph>
+        <div className="h-full w-full flex items-center justify-center">
+          <Card className="w-fit flex-col rotate-6">
+            <img
+              className="w-80 rounded-xl"
+              src="https://t3.ftcdn.net/jpg/06/42/42/26/360_F_642422662_NzqIOPauI9F7wHl5cT3zvVUG0yvY1JWn.jpg"
+            />
+            <p className="text-wrap w-50 text-sm">
+              Grow your careers with ease and all organizations at one place
+            </p>
+          </Card>
+        </div>
       </div>
     </div>
   );

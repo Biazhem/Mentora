@@ -36,8 +36,6 @@ export default function TasksPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deleteTaskId, setDeleteTaskId] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
 
@@ -199,20 +197,19 @@ export default function TasksPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteTaskId) return;
+  const handleDelete = async (taskId) => {
+    if (!taskId) return;
+    if (!window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) return;
 
     setDeleting(true);
     try {
-      await supabase.from("task_assignees").delete().eq("task_id", deleteTaskId);
+      await supabase.from("task_assignees").delete().eq("task_id", taskId);
 
-      const { error } = await supabase.from("tasks").delete().eq("id", deleteTaskId);
+      const { error } = await supabase.from("tasks").delete().eq("id", taskId);
 
       if (error) throw error;
 
-      setTasks((prev) => prev.filter((t) => t.id !== deleteTaskId));
-      setDeleteTaskId(null);
-      setDeleteModalOpen(false);
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
     } catch (err) {
       console.error("Delete task error:", err);
     } finally {
@@ -593,10 +590,7 @@ export default function TasksPage() {
                       {isAdmin && (
                         <Button
                           variant="danger-soft"
-                          onClick={() => {
-                            setDeleteTaskId(task.id);
-                            setDeleteModalOpen(true);
-                          }}
+                          onClick={() => handleDelete(task.id)}
                         >
                           Delete
                         </Button>
@@ -659,27 +653,6 @@ export default function TasksPage() {
         </div>
       )}
 
-      <Modal open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
-        <Modal.Backdrop>
-          <Modal.Container>
-            <Modal.Dialog>
-              <Modal.CloseTrigger />
-              <Modal.Header>
-                <Modal.Heading>Delete Task</Modal.Heading>
-              </Modal.Header>
-              <Modal.Body>
-                <p>Are you sure you want to delete this task? This action cannot be undone.</p>
-              </Modal.Body>
-              <Modal.Footer>
-                <Button slot="close" variant="secondary">Cancel</Button>
-                <Button slot="close" color="danger" onClick={handleDelete} isLoading={deleting}>
-                  Delete
-                </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
     </div>
   );
 }

@@ -12,6 +12,8 @@ import {
   TextField,
   Typography,
 } from "@heroui/react";
+import { Card } from "@heroui/react";
+import { ArrowLeft } from "lucide-react";
 
 function GeneralForm({ formData, updateField }) {
   return (
@@ -46,7 +48,9 @@ function GeneralForm({ formData, updateField }) {
             value={formData.bio}
             onChange={(e) => updateField("bio", e.target.value)}
           />
-          <Description className="text-right text-xs">{formData.bio.length}/160</Description>
+          <Description className="text-right text-xs">
+            {formData.bio.length}/160
+          </Description>
         </TextField>
       </div>
     </div>
@@ -116,8 +120,12 @@ function ExpertiseForm({ formData, updateField }) {
   return (
     <div className="space-y-2">
       <div>
-        <Typography.Heading level={3}>Expertise & Background</Typography.Heading>
-        <Description>Share your professional credentials and target domains</Description>
+        <Typography.Heading level={3}>
+          Expertise & Background
+        </Typography.Heading>
+        <Description>
+          Share your professional credentials and target domains
+        </Description>
       </div>
       <div className="flex w-80 flex-col gap-4">
         <TextField>
@@ -156,7 +164,9 @@ function ExpertiseForm({ formData, updateField }) {
         </TextField>
 
         <TextField>
-          <Label htmlFor="mentor-institute">Affiliated Institute / Company</Label>
+          <Label htmlFor="mentor-institute">
+            Affiliated Institute / Company
+          </Label>
           <Input
             id="mentor-institute"
             placeholder="NUST / Google"
@@ -271,12 +281,22 @@ export default function Page() {
   };
 
   return (
-    <div className="grid min-h-svh w-full grid-cols-1 lg:grid-cols-2 bg-accent-soft">
+    <div className="grid min-h-svh w-full grid-cols-1 lg:grid-cols-2 bg-accent-soft relative">
+          <Button className="absolute top-6 left-6" onClick={() => router.back()}>
+            <ArrowLeft />
+            Back
+          </Button>
       <div className="flex flex-col items-center justify-center p-6 my-8">
         <div className="flex w-80 flex-col gap-6">
-          {activeForm === 1 && <GeneralForm formData={formData} updateField={updateField} />}
-          {activeForm === 2 && <PersonalInfoForm formData={formData} updateField={updateField} />}
-          {activeForm === 3 && <ExpertiseForm formData={formData} updateField={updateField} />}
+          {activeForm === 1 && (
+            <GeneralForm formData={formData} updateField={updateField} />
+          )}
+          {activeForm === 2 && (
+            <PersonalInfoForm formData={formData} updateField={updateField} />
+          )}
+          {activeForm === 3 && (
+            <ExpertiseForm formData={formData} updateField={updateField} />
+          )}
 
           <div className="flex gap-2 items-center w-full mt-2">
             {activeForm > 1 && (
@@ -289,21 +309,37 @@ export default function Page() {
                 Back
               </Button>
             )}
-            <Button size="lg" fullWidth onClick={handleNext} isLoading={loading}>
+            <Button
+              size="lg"
+              fullWidth
+              onClick={handleNext}
+              isLoading={loading}
+            >
               {activeForm === totalSteps ? "Complete" : "Next"}
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="relative hidden h-full w-full lg:block bg-background-secondary">
-        <img
-          src="https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/docs/neo2.jpeg"
-          alt="NEO Home Robot"
-          aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/10 to-transparent" />
+      <div className="hidden h-svh w-full lg:block bg-[url(/grad-1.png)] object-right p-8 pt-16">
+        <Typography.Heading level={3}>
+          Build your Mentor Profile
+        </Typography.Heading>
+        <Typography.Paragraph>
+          To create your mentor profile which requires the information about
+          you and your verified qualifications.
+        </Typography.Paragraph>
+        <div className="h-full w-full flex items-center justify-center">
+          <Card className="w-fit flex-col rotate-6">
+            <img
+              className="w-80 rounded-xl"
+              src="https://static.vecteezy.com/system/resources/previews/004/579/655/non_2x/online-education-concept-woman-teacher-illustration-flat-vector.jpg"
+            />
+            <p className="text-wrap w-50 text-sm">
+              Grow your careers with ease and all at one place
+            </p>
+          </Card>
+        </div>
       </div>
     </div>
   );

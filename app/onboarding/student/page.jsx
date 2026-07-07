@@ -11,9 +11,11 @@ import {
   Label,
   TextArea,
   TextField,
-  Typography,
 } from "@heroui/react";
 import { Separator } from "@heroui/react";
+import { Typography } from "@heroui/react";
+import { Card } from "@heroui/react";
+import { ArrowLeft } from "lucide-react";
 
 function StudentGeneralForm({ formData, updateField, onCvUpload, cvLoading }) {
   return (
@@ -31,7 +33,7 @@ function StudentGeneralForm({ formData, updateField, onCvUpload, cvLoading }) {
           <Label htmlFor="student-name">Full Name</Label>
           <Input
             id="student-name"
-            placeholder="Zain Malik"
+            placeholder="Fatima"
             fullWidth
             value={formData.name}
             onChange={(e) => updateField("name", e.target.value)}
@@ -43,7 +45,7 @@ function StudentGeneralForm({ formData, updateField, onCvUpload, cvLoading }) {
           <Input
             id="student-email"
             type="email"
-            placeholder="zain@university.edu"
+            placeholder="fatima@university.edu"
             fullWidth
             value={formData.email}
             onChange={(e) => updateField("email", e.target.value)}
@@ -73,13 +75,17 @@ function StudentGeneralForm({ formData, updateField, onCvUpload, cvLoading }) {
               onChange={onCvUpload}
             />
             {cvLoading ? (
-              <span className="text-xs font-medium text-primary">Parsing resume...</span>
+              <span className="text-xs font-medium text-primary">
+                Parsing resume...
+              </span>
             ) : (
               <>
                 <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
                   Choose PDF / Word file
                 </span>
-                <span className="text-[10px] text-muted mt-1">Max size 5MB</span>
+                <span className="text-[10px] text-muted mt-1">
+                  Max size 5MB
+                </span>
               </>
             )}
           </div>
@@ -273,16 +279,22 @@ export default function StudentOnboardingPage() {
 
       setFormData((prev) => ({
         ...prev,
-        name: [parsed.firstName, parsed.lastName].filter(Boolean).join(" ") || prev.name,
+        name:
+          [parsed.firstName, parsed.lastName].filter(Boolean).join(" ") ||
+          prev.name,
         email: parsed.email || prev.email,
         phone: parsed.phone || prev.phone,
         program: parsed.program || prev.program,
         expertise: parsed.degree || prev.expertise,
-        skills: Array.isArray(parsed.skills) ? parsed.skills.join(", ") : prev.skills,
+        skills: Array.isArray(parsed.skills)
+          ? parsed.skills.join(", ")
+          : prev.skills,
         bio: parsed.bio || prev.bio,
         address: parsed.address || prev.address,
         dob: parsed.dateOfBirth || prev.dob,
-        languages: Array.isArray(parsed.languages) ? parsed.languages.join(", ") : prev.languages,
+        languages: Array.isArray(parsed.languages)
+          ? parsed.languages.join(", ")
+          : prev.languages,
         university: parsed.university || prev.university,
         status: parsed.status || prev.status,
       }));
@@ -331,12 +343,33 @@ export default function StudentOnboardingPage() {
   };
 
   return (
-    <div className="grid min-h-svh w-full grid-cols-1 lg:grid-cols-2 bg-accent-soft">
+    <div className="grid h-svh w-full grid-cols-1 lg:grid-cols-2 bg-accent-soft relative">
+      <Button className="absolute top-6 left-6" onClick={() => router.back()}>
+        <ArrowLeft />
+        Back
+      </Button>
       <div className="flex flex-col items-center justify-center p-6 my-8">
         <div className="flex w-80 flex-col gap-6">
-          {activeForm === 1 && <StudentGeneralForm formData={formData} updateField={updateField} onCvUpload={handleCvUpload} cvLoading={cvLoading} />}
-          {activeForm === 2 && <StudentAcademicForm formData={formData} updateField={updateField} />}
-          {activeForm === 3 && <StudentExpertiseForm formData={formData} updateField={updateField} />}
+          {activeForm === 1 && (
+            <StudentGeneralForm
+              formData={formData}
+              updateField={updateField}
+              onCvUpload={handleCvUpload}
+              cvLoading={cvLoading}
+            />
+          )}
+          {activeForm === 2 && (
+            <StudentAcademicForm
+              formData={formData}
+              updateField={updateField}
+            />
+          )}
+          {activeForm === 3 && (
+            <StudentExpertiseForm
+              formData={formData}
+              updateField={updateField}
+            />
+          )}
 
           <div className="flex gap-2 items-center w-full mt-2">
             {activeForm > 1 && (
@@ -349,21 +382,37 @@ export default function StudentOnboardingPage() {
                 Back
               </Button>
             )}
-            <Button size="lg" fullWidth onClick={handleNext} isLoading={loading}>
+            <Button
+              size="lg"
+              fullWidth
+              onClick={handleNext}
+              isLoading={loading}
+            >
               {activeForm === totalSteps ? "Complete" : "Next"}
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="relative hidden h-full w-full lg:block bg-background-secondary">
-        <img
-          src="https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/docs/neo2.jpeg"
-          alt="NEO Home Robot"
-          aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/10 to-transparent" />
+      <div className="hidden h-svh w-full lg:block bg-[url(/grad-1.png)] object-right p-8 pt-16">
+        <Typography.Heading level={3}>
+          Build your Student Profile
+        </Typography.Heading>
+        <Typography.Paragraph>
+          To create your student profile which requires the information about
+          you
+        </Typography.Paragraph>
+        <div className="h-full w-full flex items-center justify-center">
+          <Card className="w-fit flex-col rotate-6">
+            <img
+              className="w-80 rounded-xl"
+              src="https://img.magnific.com/free-vector/young-student-boy_24877-76416.jpg?semt=ais_hybrid&w=740&q=80"
+            />
+            <p className="text-wrap w-50 text-sm">
+              Grow your careers with ease and all at one place
+            </p>
+          </Card>
+        </div>
       </div>
     </div>
   );
