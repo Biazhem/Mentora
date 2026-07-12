@@ -71,6 +71,25 @@ export function StudentComponent() {
     }
   };
 
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result;
+      const { error } = await supabase
+        .from("students")
+        .update({ avatar_url: base64 })
+        .eq("clerk_id", user.id);
+
+      if (!error) {
+        setStudent((prev) => ({ ...prev, avatar_url: base64 }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto p-4 w-full animate-pulse space-y-8">
@@ -87,7 +106,7 @@ export function StudentComponent() {
 
   if (!student) return <p className="p-6">Student profile not found</p>;
 
-  const userPic = student.users?.pic;
+  const userPic = student.avatar_url || student.users?.pic;
   const initials = student.name ? student.name.split(" ").map((n) => n[0]).join("").toUpperCase() : "?";
   const skillsList = student.skills ? student.skills.split(",").map((s) => s.trim()).filter(Boolean) : [];
 
@@ -96,8 +115,14 @@ export function StudentComponent() {
 
       {/* PROFILE HERO */}
       <div className="flex flex-col md:flex-row gap-6 items-start border-b pb-6 border-default-100">
-        <div className="h-36 w-36 md:h-44 md:w-44 bg-muted rounded-2xl flex-shrink-0 flex items-center justify-center border border-default-200 shadow-sm font-bold text-xl text-muted-foreground overflow-hidden">
-          {userPic ? <img src={userPic} alt={student.name} className="w-full h-full object-cover" /> : initials}
+        <div className="relative group">
+          <div className="h-36 w-36 md:h-44 md:w-44 bg-muted rounded-2xl flex-shrink-0 flex items-center justify-center border border-default-200 shadow-sm font-bold text-xl text-muted-foreground overflow-hidden">
+            {userPic ? <img src={userPic} alt={student.name} className="w-full h-full object-cover" /> : initials}
+          </div>
+          <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl cursor-pointer">
+            <input type="file" accept=".jpg,.jpeg,.png" className="hidden" onChange={handleAvatarUpload} />
+            <PenLine className="size-5 text-white" />
+          </label>
         </div>
 
         <div className="flex flex-col gap-3 flex-1 min-w-0 w-full">

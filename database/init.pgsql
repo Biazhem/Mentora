@@ -70,6 +70,7 @@ CREATE TABLE public.students (
   semester text NOT NULL DEFAULT ''::text,
   expertise text NOT NULL DEFAULT ''::text,
   skills text NOT NULL DEFAULT ''::text,
+  avatar_url text NOT NULL DEFAULT ''::text,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT students_pkey PRIMARY KEY (id),

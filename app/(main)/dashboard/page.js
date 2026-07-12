@@ -185,7 +185,7 @@ export default function DashboardPage() {
       pendingTasks: (tasksRes.data || []).filter((t) => t.status === "pending").length,
       jobs: (jobsRes.data || []).map((j) => ({ ...j, org_logo_url: orgLogo })),
       jobCount: jobsRes.data?.length || 0,
-      events: eventsRes.data || [],
+      events: (eventsRes.data || []).map((e) => ({ ...e, org_logo_url: orgLogo })),
       eventCount: eventsRes.data?.length || 0,
     });
   }
@@ -450,6 +450,7 @@ export default function DashboardPage() {
               {d.events?.length ? d.events.map((e) => (
                 <ListItem
                   key={e.id}
+                  avatar={e.org_logo_url ? { name: "", pic: e.org_logo_url } : undefined}
                   title={e.title}
                   subtitle={e.type || "No type"}
                   chip={e.start_date ? <Chip size="sm" variant="secondary">{new Date(e.start_date).toLocaleDateString()}</Chip> : null}

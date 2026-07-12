@@ -42,10 +42,35 @@ export default function MainHeader({
     (state) => state.setSelectedOrganizationId,
   );
   const [activeMeeting, setActiveMeeting] = useState(null);
+  const [dbAvatar, setDbAvatar] = useState(null);
 
   useEffect(() => {
     if (user) fetchOrganizations(user.id);
   }, [user, fetchOrganizations]);
+
+  useEffect(() => {
+    async function fetchDbAvatar() {
+      if (!user) return;
+      const { data: studentData } = await supabase
+        .from("students")
+        .select("avatar_url")
+        .eq("clerk_id", user.id)
+        .maybeSingle();
+      if (studentData?.avatar_url) {
+        setDbAvatar(studentData.avatar_url);
+        return;
+      }
+      const { data: founderData } = await supabase
+        .from("organizations")
+        .select("founder_photo_url")
+        .eq("clerk_id", user.id)
+        .maybeSingle();
+      if (founderData?.founder_photo_url) {
+        setDbAvatar(founderData.founder_photo_url);
+      }
+    }
+    fetchDbAvatar();
+  }, [user]);
 
   useEffect(() => {
     async function checkActiveMeeting() {
@@ -163,7 +188,7 @@ export default function MainHeader({
         <Popover>
           <Button isIconOnly>
             <Avatar color="accent">
-              <Avatar.Image src={imageUrl} alt={fullName} />
+              <Avatar.Image src={dbAvatar || imageUrl} alt={fullName} />
               <Avatar.Fallback className="bg-accent text-background">
                 {fallbackInitials}
               </Avatar.Fallback>
@@ -178,14 +203,14 @@ export default function MainHeader({
                     <div className="rounded-lg h-12 overflow-hidden">
                       <img
                         className="object-cover object-top w-full backdrop:blur-3xl"
-                        src={imageUrl}
+                        src={dbAvatar || imageUrl}
                         alt={fullName}
                         width={320}
                         height={48}
                       />
                     </div>
                     <Avatar size="lg" className="-mt-6 ml-4 ring-2 ring-white">
-                      <Avatar.Image alt={fullName} src={imageUrl} />
+                      <Avatar.Image alt={fullName} src={dbAvatar || imageUrl} />
                       <Avatar.Fallback>{fallbackInitials}</Avatar.Fallback>
                     </Avatar>
                     <div className="mt-2">

@@ -3,10 +3,105 @@ import PDFParser from "pdf2json";
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
+function getStudentPrompt() {
+  return {
+    system: `Extract resume information from the text. 
+Rules:
+- bio = a short 1-2 sentence professional summary about the person (max 50 words). Keep it concise if not listed then generate from watching status and level.
+- university = the university or institute name from education section.
+- status = current status: "student" if currently enrolled, "graduate" if completed degree, "working" if employed.
+- Return empty string for missing strings and empty array for missing arrays.`,
+    schema: {
+      name: "resume_data",
+      strict: true,
+      schema: {
+        type: "object",
+        properties: {
+          firstName: { type: "string" },
+          lastName: { type: "string" },
+          email: { type: "string" },
+          phone: { type: "string" },
+          program: { type: "string" },
+          degree: { type: "string" },
+          university: { type: "string" },
+          status: { type: "string" },
+          dateOfBirth: { type: "string" },
+          address: { type: "string" },
+          bio: { type: "string" },
+          skills: { type: "array", items: { type: "string" } },
+          experiences: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                company: { type: "string" },
+                duration: { type: "string" },
+              },
+              required: ["title", "company", "duration"],
+              additionalProperties: false,
+            },
+          },
+          languages: { type: "array", items: { type: "string" } },
+        },
+        required: [
+          "firstName", "lastName", "email", "phone",
+          "program", "degree", "university", "status",
+          "dateOfBirth", "address", "bio",
+          "skills", "experiences", "languages",
+        ],
+        additionalProperties: false,
+      },
+    },
+  };
+}
+
+function getMentorPrompt() {
+  return {
+    system: `Extract mentor/professional information from the resume text.
+Rules:
+- bio = a short 1-2 sentence professional summary about the person (max 80 words). Focus on mentoring style, leadership, and expertise.
+- field = the primary industry or field of work (e.g., "Software Engineering", "Data Science").
+- expertise = comma-separated list of specific skills or areas of expertise.
+- experience = total years of experience as a number (e.g., "5").
+- institute = current or most recent affiliated company or institution.
+Return empty string for missing strings and empty array for missing arrays.`,
+    schema: {
+      name: "mentor_data",
+      strict: true,
+      schema: {
+        type: "object",
+        properties: {
+          firstName: { type: "string" },
+          lastName: { type: "string" },
+          email: { type: "string" },
+          phone: { type: "string" },
+          gender: { type: "string" },
+          dateOfBirth: { type: "string" },
+          bio: { type: "string" },
+          field: { type: "string" },
+          expertise: { type: "string" },
+          experience: { type: "string" },
+          institute: { type: "string" },
+          instituteEmail: { type: "string" },
+        },
+        required: [
+          "firstName", "lastName", "email", "phone",
+          "gender", "dateOfBirth", "bio",
+          "field", "expertise", "experience",
+          "institute", "instituteEmail",
+        ],
+        additionalProperties: false,
+      },
+    },
+  };
+}
+
 export async function POST(req) {
   try {
     const formData = await req.formData();
     const file = formData.get("file");
+    const typePrompt = formData.get("type_prompt") || "student";
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -30,6 +125,9 @@ export async function POST(req) {
       pdfParser.parseBuffer(buffer);
     });
 
+    const promptConfig = typePrompt === "mentor" ? getMentorPrompt() : getStudentPrompt();
+    const schemaName = typePrompt === "mentor" ? "mentor_data" : "resume_data";
+
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -41,12 +139,7 @@ export async function POST(req) {
         messages: [
           {
             role: "system",
-            content: `Extract resume information from the text. 
-Rules:
-- bio = a short 1-2 sentence professional summary about the person (max 50 words). Keep it concise if not listed then generate from watching status and level.
-- university = the university or institute name from education section.
-- status = current status: "student" if currently enrolled, "graduate" if completed degree, "working" if employed.
-- Return empty string for missing strings and empty array for missing arrays.`,
+            content: promptConfig.system,
           },
           {
             role: "user",
@@ -55,48 +148,7 @@ Rules:
         ],
         response_format: {
           type: "json_schema",
-          json_schema: {
-            name: "resume_data",
-            strict: true,
-            schema: {
-              type: "object",
-              properties: {
-                firstName: { type: "string" },
-                lastName: { type: "string" },
-                email: { type: "string" },
-                phone: { type: "string" },
-                program: { type: "string" },
-                degree: { type: "string" },
-                university: { type: "string" },
-                status: { type: "string" },
-                dateOfBirth: { type: "string" },
-                address: { type: "string" },
-                bio: { type: "string" },
-                skills: { type: "array", items: { type: "string" } },
-                experiences: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      title: { type: "string" },
-                      company: { type: "string" },
-                      duration: { type: "string" },
-                    },
-                    required: ["title", "company", "duration"],
-                    additionalProperties: false,
-                  },
-                },
-                languages: { type: "array", items: { type: "string" } },
-              },
-              required: [
-                "firstName", "lastName", "email", "phone",
-                "program", "degree", "university", "status",
-                "dateOfBirth", "address", "bio",
-                "skills", "experiences", "languages",
-              ],
-              additionalProperties: false,
-            },
-          },
+          json_schema: promptConfig.schema,
         },
       }),
     });

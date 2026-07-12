@@ -276,7 +276,7 @@ export default function EventsPage() {
       )}
 
       <div className="px-4 mb-8 flex justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center flex-col *:w-full lg:*:w-auto lg:flex-row  gap-2">
           <InputGroup>
             <InputGroup.Prefix>
               <Search className="size-4" />
@@ -289,7 +289,7 @@ export default function EventsPage() {
             />
           </InputGroup>
           <Link href="/events/my-reg">
-            <Button>My Registrations</Button>
+            <Button  className="lg:w-auto w-full">My Registrations</Button>
           </Link>
           {isAdmin && (
             <Link href="/events/applications">
@@ -334,12 +334,14 @@ export default function EventsPage() {
             </Select.Popover>
           </Select>
 
-          <Link href="/events/create">
-            <Button>
-              <Plus />
-              Create Event
-            </Button>
-          </Link>
+          {isAdmin && (
+            <Link href="/events/create">
+              <Button>
+                <Plus />
+                Create Event
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -364,19 +366,19 @@ export default function EventsPage() {
                 <Modal.Trigger>
                   <Card className="w-full items-stretch md:flex-row cursor-pointer">
                     <div className="relative h-[140px] w-full shrink-0 overflow-hidden rounded-2xl sm:h-[120px] sm:w-[120px] bg-accent-soft-hover">
-                        {event.org_logo_url ? (
-                          <img
-                            alt={event.org_name}
-                            className="pointer-events-none absolute inset-0 h-full w-full scale-125 object-cover select-none"
-                            src={event.org_logo_url}
-                          />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-lg font-semibold text-muted">
-                              {event.org_name?.[0]?.toUpperCase() || "E"}
-                            </span>
-                          </div>
-                        )}
+                      {event.org_logo_url ? (
+                        <img
+                          alt={event.org_name}
+                          className="pointer-events-none absolute inset-0 h-full w-full scale-125 object-cover select-none"
+                          src={event.org_logo_url}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-lg font-semibold text-muted">
+                            {event.org_name?.[0]?.toUpperCase() || "E"}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-1 flex-col gap-3">
                       <Card.Header className="gap-1">
@@ -434,50 +436,40 @@ export default function EventsPage() {
                     <Modal.Dialog>
                       <Modal.CloseTrigger />
                       <Modal.Body>
-                        <div className="flex flex-row gap-2 items-start justify-between">
-                          <div className="flex flex-row gap-3">
-                            <div className="relative h-[200px] w-full shrink-0 overflow-hidden rounded-2xl sm:h-[120px] sm:w-[120px] bg-accent-soft-hover">
-                                {event.org_logo_url ? (
-                                  <img
-                                    alt={event.org_name}
-                                    className="pointer-events-none absolute inset-0 h-full w-full scale-125 object-cover select-none"
-                                    src={event.org_logo_url}
-                                  />
-                                ) : (
-                                  <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-lg font-semibold text-muted">
-                                      {event.org_name?.[0]?.toUpperCase() || "E"}
-                                    </span>
-                                  </div>
-                                )}
+                        <div className="flex flex-col sm:flex-row gap-3 items-start">
+                          <div className="relative h-[160px] w-full sm:h-[120px] sm:w-[120px] shrink-0 overflow-hidden rounded-2xl bg-accent-soft-hover">
+                            {event.org_logo_url ? (
+                              <img
+                                alt={event.org_name}
+                                className="pointer-events-none absolute inset-0 h-full w-full scale-125 object-cover select-none"
+                                src={event.org_logo_url}
+                              />
+                            ) : (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="text-lg font-semibold text-muted">
+                                  {event.org_name?.[0]?.toUpperCase() || "E"}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-1 min-w-0">
+                            <Modal.Heading className="text-xl">
+                              {event.title}
+                            </Modal.Heading>
+                            <Description>{event.description}</Description>
+                            <div className="flex flex-wrap gap-1">
+                              {event.start_date && (
+                                <Chip size="sm">{event.start_date}</Chip>
+                              )}
+                              {event.end_date && (
+                                <Chip size="sm">{event.end_date}</Chip>
+                              )}
                             </div>
-                            <div className="py-2 flex flex-col gap-1">
-                              <Modal.Heading className="text-xl">
-                                {event.title}
-                              </Modal.Heading>
-                              <Description>{event.description}</Description>
-                              <div className="flex flex-row gap-1">
-                                {event.start_date && (
-                                  <Chip>{event.start_date}</Chip>
-                                )}
-                                {event.start_date && event.end_date && (
-                                  <span>-</span>
-                                )}
-                                {event.end_date && (
-                                  <Chip variant="primary" color="accent">
-                                    {event.end_date}
-                                  </Chip>
-                                )}
-                              </div>
-                              <div className="flex flex-row gap-1">
-                                {event.location && (
-                                  <Chip variant="primary" color="accent">
-                                    {event.location}
-                                  </Chip>
-                                )}
-                                {event.location && event.type && <span>-</span>}
-                                {event.type && <Chip>{event.type}</Chip>}
-                              </div>
+                            <div className="flex flex-wrap gap-1">
+                              {event.location && (
+                                <Chip size="sm" variant="soft">{event.location}</Chip>
+                              )}
+                              {event.type && <Chip size="sm">{event.type}</Chip>}
                             </div>
                           </div>
                         </div>
@@ -485,25 +477,26 @@ export default function EventsPage() {
                           About
                         </Modal.Heading>
                         <Separator className="my-3" />
-                        <div className="flex gap-2 w-full">
-                          <div className="w-full">
+                        <div className="flex flex-col lg:flex-row gap-4 w-full">
+                          <div className="w-full lg:flex-1">
                             <p className="text-sm text-foreground whitespace-pre-wrap">
                               {event.description}
                             </p>
                           </div>
-                          <div className="w-lg space-y-2">
+                          <div className="w-full lg:w-80 space-y-2">
                             {Array.isArray(event.guest) &&
                               event.guest.length > 0 && (
                                 <Surface
-                                  className="flex min-w-[320px] flex-col gap-1 rounded-3xl p-3"
+                                  className="flex flex-col gap-1 rounded-3xl p-3"
                                   variant="secondary"
                                 >
                                   <h3 className="text-base font-semibold text-foreground">
                                     Guests
                                   </h3>
-                                  <div className="flex gap-2 items-center">
+                                  <div className="flex gap-2 items-center flex-wrap">
                                     {event.guest.map((g, idx) => (
                                       <Chip
+                                        size="sm"
                                         key={idx}
                                         variant="soft"
                                         color="accent"
@@ -515,20 +508,18 @@ export default function EventsPage() {
                                 </Surface>
                               )}
                             <Surface
-                              className="flex min-w-[320px] flex-col gap-0 rounded-3xl p-3"
+                              className="flex flex-col gap-0 rounded-3xl p-3"
                               variant="secondary"
                             >
                               <h3 className="text-base font-semibold text-foreground">
                                 Location
                               </h3>
-                              <div className="flex gap-2 items-center">
-                                <p className="text-sm">
-                                  {event.location || "TBA"}
-                                </p>
-                              </div>
+                              <p className="text-sm">
+                                {event.location || "TBA"}
+                              </p>
                             </Surface>
                             <Surface
-                              className="flex min-w-[320px] flex-col gap-1 rounded-3xl p-3"
+                              className="flex flex-col gap-1 rounded-3xl p-3"
                               variant="secondary"
                             >
                               <h3 className="text-base font-semibold text-foreground">

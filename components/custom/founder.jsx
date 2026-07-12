@@ -31,7 +31,7 @@ export function FounderComponent() {
       try {
         const { data } = await supabase
           .from("organizations")
-          .select("id, org_name, description, company_type, city, country, founder_name, founder_email, founder_phone, founder_gender, founder_dob, clerk_id")
+          .select("id, org_name, description, company_type, city, country, founder_name, founder_email, founder_phone, founder_gender, founder_dob, founder_photo_url, clerk_id")
           .eq("clerk_id", user.id)
           .order("created_at", { ascending: false });
 
@@ -119,10 +119,7 @@ export function FounderComponent() {
       {organizations.map((org) => (
         <Card key={org.id} className="p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <Link href={`/organization/${org.id}`} className="flex items-center gap-3">
-              <Avatar size="lg">
-                <Avatar.Fallback>{org.org_name?.[0]?.toUpperCase() || "O"}</Avatar.Fallback>
-              </Avatar>
+            <Link href={`/organization/${org.id}`} className="flex items-center gap-3 flex-1 min-w-0">
               <div>
                 <p className="font-medium">{org.org_name}</p>
                 <Description className="text-xs">

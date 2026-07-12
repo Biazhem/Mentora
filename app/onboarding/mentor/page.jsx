@@ -10,12 +10,12 @@ import {
   Label,
   TextArea,
   TextField,
-  Typography,
 } from "@heroui/react";
 import { Card } from "@heroui/react";
 import { ArrowLeft } from "lucide-react";
+import { Typography } from "@heroui/react";
 
-function GeneralForm({ formData, updateField }) {
+function MentorGeneralForm({ formData, updateField, onCvUpload, cvLoading }) {
   return (
     <div className="space-y-2">
       <div>
@@ -23,8 +23,17 @@ function GeneralForm({ formData, updateField }) {
         <Description>Introduce yourself to your future mentees</Description>
       </div>
       <div className="flex w-80 flex-col gap-4">
-        <div className="flex flex-col items-center justify-center w-30 h-30 bg-accent-soft-hover rounded-xl border border-dashed border-muted/40 cursor-pointer hover:bg-accent-soft transition-colors">
-          <span className="text-xs text-muted font-medium">Upload Pic</span>
+        <div className="relative flex flex-col items-center justify-center w-30 h-30 bg-accent-soft-hover rounded-xl border border-dashed border-muted/40 cursor-pointer hover:bg-accent-soft transition-colors overflow-hidden group">
+          <input
+            type="file"
+            accept=".jpg,.jpeg,.png"
+            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+          />
+          {formData.avatarPreview ? (
+            <img src={formData.avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-xs text-muted font-medium">Upload Pic</span>
+          )}
         </div>
 
         <TextField>
@@ -52,12 +61,38 @@ function GeneralForm({ formData, updateField }) {
             {formData.bio.length}/160
           </Description>
         </TextField>
+        <TextField>
+          <Label htmlFor="mentor-cv">Get information from Resume</Label>
+          <div className="relative flex flex-col items-center justify-center p-4 border border-dashed border-muted/40 rounded-xl bg-background-secondary hover:bg-accent-soft transition-colors cursor-pointer group">
+            <input
+              type="file"
+              id="mentor-cv"
+              accept=".pdf,.doc,.docx"
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              onChange={onCvUpload}
+            />
+            {cvLoading ? (
+              <span className="text-xs font-medium text-primary">
+                Parsing resume...
+              </span>
+            ) : (
+              <>
+                <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
+                  Choose PDF / Word file
+                </span>
+                <span className="text-[10px] text-muted mt-1">
+                  Max size 5MB
+                </span>
+              </>
+            )}
+          </div>
+        </TextField>
       </div>
     </div>
   );
 }
 
-function PersonalInfoForm({ formData, updateField }) {
+function MentorPersonalForm({ formData, updateField }) {
   return (
     <div className="space-y-2">
       <div>
@@ -116,7 +151,7 @@ function PersonalInfoForm({ formData, updateField }) {
   );
 }
 
-function ExpertiseForm({ formData, updateField }) {
+function MentorExpertiseForm({ formData, updateField }) {
   return (
     <div className="space-y-2">
       <div>
@@ -192,11 +227,12 @@ function ExpertiseForm({ formData, updateField }) {
   );
 }
 
-export default function Page() {
+export default function MentorOnboardingPage() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const [activeForm, setActiveForm] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [cvLoading, setCvLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     bio: "",
@@ -209,6 +245,8 @@ export default function Page() {
     experience: "",
     institute: "",
     instEmail: "",
+    avatarFile: null,
+    avatarPreview: "",
   });
   const totalSteps = 3;
 
@@ -234,6 +272,50 @@ export default function Page() {
 
   const updateField = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleCvUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCvLoading(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      body.append("type_prompt", "mentor");
+
+      const res = await fetch("/api/conver-parse", {
+        method: "POST",
+        body,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Parse failed");
+
+      const parsed = data.parsed;
+
+      setFormData((prev) => ({
+        ...prev,
+        name:
+          [parsed.firstName, parsed.lastName].filter(Boolean).join(" ") ||
+          prev.name,
+        email: parsed.email || prev.email,
+        phone: parsed.phone || prev.phone,
+        gender: parsed.gender || prev.gender,
+        dob: parsed.dateOfBirth || prev.dob,
+        bio: parsed.bio || prev.bio,
+        field: parsed.field || prev.field,
+        expertise: parsed.expertise || prev.expertise,
+        experience: parsed.experience || prev.experience,
+        institute: parsed.institute || prev.institute,
+        instEmail: parsed.instituteEmail || prev.instEmail,
+      }));
+    } catch (err) {
+      console.error("CV parse error:", err);
+    } finally {
+      setCvLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -282,20 +364,25 @@ export default function Page() {
 
   return (
     <div className="grid min-h-svh w-full grid-cols-1 lg:grid-cols-2 bg-accent-soft relative">
-          <Button className="absolute top-6 left-6" onClick={() => router.back()}>
-            <ArrowLeft />
-            Back
-          </Button>
+      <Button className="absolute top-6 left-6" onClick={() => router.back()}>
+        <ArrowLeft />
+        Back
+      </Button>
       <div className="flex flex-col items-center justify-center p-6 my-8">
         <div className="flex w-80 flex-col gap-6">
           {activeForm === 1 && (
-            <GeneralForm formData={formData} updateField={updateField} />
+            <MentorGeneralForm
+              formData={formData}
+              updateField={updateField}
+              onCvUpload={handleCvUpload}
+              cvLoading={cvLoading}
+            />
           )}
           {activeForm === 2 && (
-            <PersonalInfoForm formData={formData} updateField={updateField} />
+            <MentorPersonalForm formData={formData} updateField={updateField} />
           )}
           {activeForm === 3 && (
-            <ExpertiseForm formData={formData} updateField={updateField} />
+            <MentorExpertiseForm formData={formData} updateField={updateField} />
           )}
 
           <div className="flex gap-2 items-center w-full mt-2">

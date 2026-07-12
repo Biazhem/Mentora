@@ -27,7 +27,7 @@ export function MentorDrawer({ mentor }) {
               </Avatar>
               <div>
                 <Card.Title className="text-lg">{displayName}</Card.Title>
-                <Card.Description className="text-xs">{mentor.bio}</Card.Description>
+                <Card.Description className="text-xs line-clamp-1">{mentor.bio}</Card.Description>
               </div>
             </div>
           </Card.Header>
@@ -41,12 +41,7 @@ export function MentorDrawer({ mentor }) {
                 ))}
               </div>
             </div>
-            {mentor.field && (
-              <div className="flex gap-2 items-center text-sm text-muted">
-                <span>{mentor.field}</span>
-                {mentor.institute && <span>at {mentor.institute}</span>}
-              </div>
-            )}
+            
           </Card.Content>
         </Card>
       </Drawer.Trigger>

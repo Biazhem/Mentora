@@ -17,7 +17,7 @@ import { Typography } from "@heroui/react";
 import { Card } from "@heroui/react";
 import { ArrowLeft } from "lucide-react";
 
-function StudentGeneralForm({ formData, updateField, onCvUpload, cvLoading }) {
+function StudentGeneralForm({ formData, updateField, onCvUpload, cvLoading, onAvatarChange }) {
   return (
     <div className="space-y-2">
       <div>
@@ -25,8 +25,22 @@ function StudentGeneralForm({ formData, updateField, onCvUpload, cvLoading }) {
         <Description>Set up your basic profile details</Description>
       </div>
       <div className="flex w-80 flex-col gap-2">
-        <div className="flex flex-col items-center justify-center w-30 h-30 bg-accent-soft-hover rounded-xl border border-dashed border-muted/40 cursor-pointer hover:bg-accent-soft transition-colors mx-auto lg:mx-0">
-          <span className="text-xs text-muted font-medium">Upload Avatar</span>
+        <div className="relative flex flex-col items-center justify-center w-30 h-30 bg-accent-soft-hover rounded-xl border border-dashed border-muted/40 cursor-pointer hover:bg-accent-soft transition-colors mx-auto lg:mx-0 overflow-hidden group">
+          <input
+            type="file"
+            accept=".jpg,.jpeg,.png"
+            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+            onChange={(e) => onAvatarChange(e.target.files?.[0])}
+          />
+          {formData.avatarPreview ? (
+            <img
+              src={formData.avatarPreview}
+              alt="Avatar preview"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="text-xs text-muted font-medium">Upload Avatar</span>
+          )}
         </div>
 
         <TextField>
@@ -232,6 +246,8 @@ export default function StudentOnboardingPage() {
     skills: "",
     university: "",
     status: "",
+    avatarFile: null,
+    avatarPreview: "",
   });
   const totalSteps = 3;
 
@@ -255,6 +271,24 @@ export default function StudentOnboardingPage() {
 
   const updateField = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleAvatarChange = (file) => {
+    if (!file) return;
+    setFormData((prev) => ({
+      ...prev,
+      avatarFile: file,
+      avatarPreview: URL.createObjectURL(file),
+    }));
+  };
+
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleCvUpload = async (e) => {
@@ -310,6 +344,11 @@ export default function StudentOnboardingPage() {
 
     setLoading(true);
     try {
+      let avatarUrl = "";
+      if (formData.avatarFile) {
+        avatarUrl = await fileToBase64(formData.avatarFile);
+      }
+
       const { data, error } = await supabase.from("students").insert({
         clerk_id: user.id,
         name: formData.name,
@@ -319,6 +358,7 @@ export default function StudentOnboardingPage() {
         semester: "",
         expertise: formData.expertise,
         skills: formData.skills,
+        avatar_url: avatarUrl,
       });
 
       if (error) {
@@ -356,6 +396,7 @@ export default function StudentOnboardingPage() {
               updateField={updateField}
               onCvUpload={handleCvUpload}
               cvLoading={cvLoading}
+              onAvatarChange={handleAvatarChange}
             />
           )}
           {activeForm === 2 && (
