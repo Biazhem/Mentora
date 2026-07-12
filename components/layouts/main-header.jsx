@@ -21,6 +21,8 @@ import { useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import { NavigationSidebarSmall } from "./navigation-sidebar-sm";
 import { supabase } from "@/lib/supabase";
+import { Bell } from "lucide-react";
+import NotificationButton from "./notification-drawer";
 
 export default function MainHeader({
   fullName,
@@ -184,6 +186,7 @@ export default function MainHeader({
             </Button>
           </Link>
         )}
+        <NotificationButton />
         <ThemeSwitch />
         <Popover>
           <Button isIconOnly>
