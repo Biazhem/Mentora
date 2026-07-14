@@ -108,16 +108,9 @@ export default function MentorsPage() {
           </Link>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button
-            isIconOnly
-            variant="danger-soft"
-            onPress={() => {
-              setSearch("");
-              setExpertiseFilter("all");
-            }}
-          >
-            <Trash />
-          </Button>
+          <Link href="/mentors/requests">
+          <Button>Requests</Button>
+          </Link>
           <Select
             selectedKey={expertiseFilter}
             onSelectionChange={(key) => setExpertiseFilter(key || "all")}

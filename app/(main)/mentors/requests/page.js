@@ -29,6 +29,7 @@ export default function MentorRequestsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [updatingId, setUpdatingId] = useState(null);
+  const [mentorId, setMentorId] = useState(null);
 
   useEffect(() => {
     async function fetchRequests() {
@@ -58,10 +59,13 @@ export default function MentorRequestsPage() {
           return;
         }
 
+        setMentorId(mentorData.id);
+
         const { data: requestData } = await supabase
           .from("mentorship_requests")
           .select(`
             id,
+            user_id,
             status,
             message,
             requested_at,
@@ -99,6 +103,8 @@ export default function MentorRequestsPage() {
   const handleStatusChange = async (requestId, newStatus) => {
     setUpdatingId(requestId);
     try {
+      const req = requests.find((r) => r.id === requestId);
+
       const { error } = await supabase
         .from("mentorship_requests")
         .update({ status: newStatus, updated_at: new Date().toISOString() })
@@ -107,10 +113,77 @@ export default function MentorRequestsPage() {
       if (error) throw error;
 
       setRequests((prev) =>
-        prev.map((req) =>
-          req.id === requestId ? { ...req, status: newStatus } : req
+        prev.map((r) =>
+          r.id === requestId ? { ...r, status: newStatus } : r
         )
       );
+
+      if (req?.user_id) {
+        const title = newStatus === "approved"
+          ? "Mentorship Request Approved"
+          : "Mentorship Request Rejected";
+        const message = newStatus === "approved"
+          ? "Your mentorship request has been approved! You can now connect with your mentor."
+          : "Your mentorship request has been rejected. You can try requesting another mentor.";
+
+        // Notify the student
+        await supabase.from("notifications").insert({
+          user_id: req.user_id,
+          org_id: null,
+          type: "mentorship",
+          title,
+          message,
+          entity_id: req.id,
+        });
+
+        // Notify the mentor (confirmation)
+        if (mentorId) {
+          const { data: mentorInfo } = await supabase
+            .from("mentors")
+            .select("clerk_id")
+            .eq("id", mentorId)
+            .maybeSingle();
+          if (mentorInfo?.clerk_id) {
+            const { data: mentorUserRow } = await supabase
+              .from("users")
+              .select("id")
+              .eq("clerk_id", mentorInfo.clerk_id)
+              .maybeSingle();
+            if (mentorUserRow) {
+              const mentorTitle = newStatus === "approved"
+                ? "You Approved a Mentorship Request"
+                : "You Rejected a Mentorship Request";
+              const mentorMessage = newStatus === "approved"
+                ? `You approved ${req.students?.name || "a student"}'s mentorship request.`
+                : `You rejected ${req.students?.name || "a student"}'s mentorship request.`;
+
+              await supabase.from("notifications").insert({
+                user_id: mentorUserRow.id,
+                org_id: null,
+                type: "mentorship",
+                title: mentorTitle,
+                message: mentorMessage,
+                entity_id: req.id,
+              });
+            }
+          }
+        }
+
+        // Send email to student
+        const studentEmail = req.students?.email || req.users?.email;
+        if (studentEmail) {
+          const emailHtml = newStatus === "approved"
+            ? `<h2>Mentorship Request Approved</h2><p>Great news! Your mentorship request has been approved. You can now connect with your mentor on Mentora.</p><p><a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/mentors">View Mentors</a></p>`
+            : `<h2>Mentorship Request Rejected</h2><p>We're sorry, your mentorship request has been rejected. You can try requesting another mentor.</p><p><a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/mentors">Browse Mentors</a></p>`;
+          try {
+            await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/send-email`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ to: studentEmail, subject: title, html: emailHtml }),
+            });
+          } catch (e) { console.error("Email error:", e); }
+        }
+      }
     } catch (err) {
       console.error("Update status error:", err);
     } finally {

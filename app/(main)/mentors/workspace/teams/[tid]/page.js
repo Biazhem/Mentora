@@ -241,6 +241,20 @@ export default function TeamDetailPage({ params }) {
         prev.filter((student) => !selectedMembers.has(student.id))
       );
       setSelectedMembers(new Set());
+
+      // Notify added members
+      for (const student of rows) {
+        if (student.user_id) {
+          await supabase.from("notifications").insert({
+            user_id: student.user_id,
+            org_id: null,
+            type: "mentorship",
+            title: "Added to Team",
+            message: `You have been added to team "${team.name}"`,
+            entity_id: tid,
+          });
+        }
+      }
     } catch (err) {
       console.error("Add members error:", err);
     } finally {
@@ -285,6 +299,22 @@ export default function TeamDetailPage({ params }) {
 
       setTasks((prev) => [{ ...taskData, assignee_details: [] }, ...prev]);
       setNewTask({ title: "", description: "", start_date: "", end_date: "", assignees: new Set() });
+
+      // Notify assignees
+      const assigneeIds = Array.from(newTask.assignees);
+      for (const studentId of assigneeIds) {
+        const member = members.find((m) => m.student_id === studentId);
+        if (member?.user_id) {
+          await supabase.from("notifications").insert({
+            user_id: member.user_id,
+            org_id: null,
+            type: "task",
+            title: "Team Task Assigned",
+            message: `"${newTask.title}" has been assigned to you in team "${team.name}"`,
+            entity_id: taskData.id,
+          });
+        }
+      }
     } catch (err) {
       console.error("Create task error:", err);
     } finally {

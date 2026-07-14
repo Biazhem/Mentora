@@ -13,6 +13,7 @@ import {
 } from "@heroui/react";
 import { FabButton } from "../custom/drawer";
 import { ThemeSwitch } from "../theme/theme-switcher";
+import NotificationButton from "./notification-drawer";
 import { Settings, Video } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -22,7 +23,6 @@ import { useEffect, useState } from "react";
 import { NavigationSidebarSmall } from "./navigation-sidebar-sm";
 import { supabase } from "@/lib/supabase";
 import { Bell } from "lucide-react";
-import NotificationButton from "./notification-drawer";
 
 export default function MainHeader({
   fullName,

@@ -70,9 +70,9 @@ CREATE TABLE public.students (
   semester text NOT NULL DEFAULT ''::text,
   expertise text NOT NULL DEFAULT ''::text,
   skills text NOT NULL DEFAULT ''::text,
-  avatar_url text NOT NULL DEFAULT ''::text,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
+  avatar_url text NOT NULL DEFAULT ''::text,
   CONSTRAINT students_pkey PRIMARY KEY (id),
   CONSTRAINT students_clerk_id_fkey FOREIGN KEY (clerk_id) REFERENCES public.users(clerk_id)
 );
@@ -282,7 +282,7 @@ CREATE TABLE public.meeting_participants (
 CREATE TABLE public.notifications (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
-  org_id uuid NOT NULL,
+  org_id uuid,
   type text NOT NULL,
   title text NOT NULL,
   message text NOT NULL DEFAULT ''::text,
@@ -290,8 +290,5 @@ CREATE TABLE public.notifications (
   is_read boolean NOT NULL DEFAULT false,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT notifications_pkey PRIMARY KEY (id),
-  CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT notifications_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.organizations(id)
+  CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
-CREATE INDEX idx_notifications_user_id ON public.notifications (user_id);
-CREATE INDEX idx_notifications_is_read ON public.notifications (user_id, is_read);

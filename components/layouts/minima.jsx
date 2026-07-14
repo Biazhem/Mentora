@@ -65,7 +65,7 @@ export function MinimaDashboard({ children }) {
     "U";
 
   return (
-    <div className="w-full min-h-svh max-h-full flex bg-background-secondary dark:bg-background-inverse/2">
+    <div className="w-full min-h-svh max-h-full flex bg-accent-soft dark:bg-accent-soft-hover">
       {/* Sidebar */}
       <aside className="hidden lg:flex lg:w-20 lg:fixed lg:h-screen py-8 flex-col items-center justify-between">
         {/* Navigation Items */}
@@ -107,7 +107,7 @@ export function MinimaDashboard({ children }) {
           {selectedOrganizationId && (
             <Tooltip delay={0} offset={10}>
               <Link href={`/organization/${selectedOrganizationId}`}>
-                <Button variant="tertiary" isIconOnly size="lg">
+                <Button variant={(pathname.includes(`/organization/${selectedOrganizationId}`))? "primary": "tertiary"} isIconOnly size="lg">
                   <Building />
                 </Button>
               </Link>
