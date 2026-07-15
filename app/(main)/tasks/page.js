@@ -82,6 +82,7 @@ export default function TasksPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [memberTaskCounts, setMemberTaskCounts] = useState({});
 
   const [newTask, setNewTask] = useState({
     title: "",
@@ -158,6 +159,15 @@ export default function TasksPage() {
             task.task_assignees?.map((ta) => ta.users).filter(Boolean) || [],
         }));
         setTasks(enriched);
+
+        // Build member task counts
+        const counts = {};
+        taskData.forEach((task) => {
+          (task.task_assignees || []).forEach((ta) => {
+            counts[ta.user_id] = (counts[ta.user_id] || 0) + 1;
+          });
+        });
+        setMemberTaskCounts(counts);
       }
       setLoading(false);
     }
@@ -489,7 +499,9 @@ export default function TasksPage() {
                               selectedKeys={newTask.assignees}
                               onSelectionChange={handleAssigneeChange}
                             >
-                              {members.map((member) => (
+                              {members.map((member) => {
+                                const taskCount = memberTaskCounts[member.id] || 0;
+                                return (
                                 <ListBox.Item
                                   key={member.id}
                                   id={member.id}
@@ -514,11 +526,15 @@ export default function TasksPage() {
                                     <Label>{member.name || "Unknown"}</Label>
                                     <Description className="text-xs">
                                       {member.email || ""}
+                                      {taskCount > 0 && (
+                                        <span className="ml-1 text-warning font-medium">· {taskCount} task{taskCount > 1 ? "s" : ""} assigned</span>
+                                      )}
                                     </Description>
                                   </div>
                                   <ListBox.ItemIndicator />
                                 </ListBox.Item>
-                              ))}
+                                );
+                              })}
                             </ListBox>
                           </Surface>
                         </div>

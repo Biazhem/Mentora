@@ -239,6 +239,7 @@ CREATE TABLE public.team_task_assignees (
   status text NOT NULL DEFAULT 'pending'::text,
   completed_at timestamp with time zone,
   assigned_at timestamp with time zone NOT NULL DEFAULT now(),
+  links jsonb DEFAULT '[]'::jsonb,
   CONSTRAINT team_task_assignees_pkey PRIMARY KEY (task_id, student_id),
   CONSTRAINT team_task_assignees_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.team_tasks(id),
   CONSTRAINT team_task_assignees_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),

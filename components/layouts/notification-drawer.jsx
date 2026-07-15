@@ -197,7 +197,7 @@ export default function NotificationButton() {
                         onClick={() => markAsRead(notif.id)}
                       >
                         <div
-                          className={`flex items-start gap-3 p-3 border-b border-default transition-colors hover:bg-accent-soft ${
+                          className={`flex rounded-xl items-start mb-2 gap-3 p-3 border-b border-default transition-colors hover:bg-accent-soft ${
                             !notif.is_read ? "bg-accent-soft/50" : ""
                           }`}
                         >

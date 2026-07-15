@@ -7,7 +7,7 @@ import { useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import { PenLine } from "lucide-react";
 
-export function StudentComponent() {
+export function StudentComponent({ viewOnly }) {
   const { user, isLoaded } = useUser();
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -115,14 +115,16 @@ export function StudentComponent() {
 
       {/* PROFILE HERO */}
       <div className="flex flex-col md:flex-row gap-6 items-start border-b pb-6 border-default-100">
-        <div className="relative group">
+        <div className={`relative ${viewOnly ? "" : "group"}`}>
           <div className="h-36 w-36 md:h-44 md:w-44 bg-muted rounded-2xl flex-shrink-0 flex items-center justify-center border border-default-200 shadow-sm font-bold text-xl text-muted-foreground overflow-hidden">
             {userPic ? <img src={userPic} alt={student.name} className="w-full h-full object-cover" /> : initials}
           </div>
-          <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl cursor-pointer">
-            <input type="file" accept=".jpg,.jpeg,.png" className="hidden" onChange={handleAvatarUpload} />
-            <PenLine className="size-5 text-white" />
-          </label>
+          {!viewOnly && (
+            <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl cursor-pointer">
+              <input type="file" accept=".jpg,.jpeg,.png" className="hidden" onChange={handleAvatarUpload} />
+              <PenLine className="size-5 text-white" />
+            </label>
+          )}
         </div>
 
         <div className="flex flex-col gap-3 flex-1 min-w-0 w-full">
@@ -131,7 +133,7 @@ export function StudentComponent() {
               <Typography.Heading level={1} className="tracking-tight font-bold">{student.name}</Typography.Heading>
               <p className="text-base text-muted-foreground font-medium">Student</p>
             </div>
-            <Modal>
+            {!viewOnly && (<Modal>
               <Button size="sm" variant="flat">Edit Profile</Button>
               <Modal.Backdrop>
                 <Modal.Container>
@@ -185,6 +187,7 @@ export function StudentComponent() {
                 </Modal.Container>
               </Modal.Backdrop>
             </Modal>
+            )}
           </div>
 
           <Label className="text-default-400 font-mono text-sm">{student.email}</Label>
@@ -210,7 +213,7 @@ export function StudentComponent() {
         <div className="lg:col-span-2 flex flex-col gap-3">
           <div className="flex justify-between items-center">
             <Typography.Heading level={3} className="font-semibold">Expertise</Typography.Heading>
-            <Modal>
+            {!viewOnly && (<Modal>
               <Button size="sm" variant="ghost">Edit</Button>
               <Modal.Backdrop>
                 <Modal.Container>
@@ -240,6 +243,7 @@ export function StudentComponent() {
                 </Modal.Container>
               </Modal.Backdrop>
             </Modal>
+            )}
           </div>
           {student.expertise && (
             <p className="text-sm text-default-600 leading-relaxed bg-default-50 p-4 rounded-xl border border-default-100">
