@@ -23,6 +23,50 @@ import { Search, SlidersHorizontal, Trash } from "lucide-react";
 import { Card, Chip, Button, InputGroup } from "@heroui/react";
 import { Modal } from "@heroui/react";
 
+async function sendTaskNotification({ orgId, userId, type, title, message, taskId, assigneeIds = [] }) {
+  try {
+    const targetUserIds = assigneeIds.length > 0 ? assigneeIds : [];
+
+    if (targetUserIds.length > 0) {
+      const rows = targetUserIds.map((uid) => ({
+        user_id: uid,
+        org_id: orgId,
+        type: "task",
+        title,
+        message,
+        entity_id: taskId || null,
+      }));
+
+      await supabase.from("notifications").insert(rows);
+    }
+
+    const { data: adminMembers } = await supabase
+      .from("organization_members")
+      .select("user_id")
+      .eq("organization_id", orgId)
+      .eq("role", "admin");
+
+    if (adminMembers) {
+      const adminRows = adminMembers
+        .filter((m) => m.user_id !== userId && !targetUserIds.includes(m.user_id))
+        .map((m) => ({
+          user_id: m.user_id,
+          org_id: orgId,
+          type: "task",
+          title,
+          message,
+          entity_id: taskId || null,
+        }));
+
+      if (adminRows.length > 0) {
+        await supabase.from("notifications").insert(adminRows);
+      }
+    }
+  } catch (err) {
+    console.error("Notification error:", err);
+  }
+}
+
 export default function TasksPage() {
   const { user } = useUser();
   const selectedOrganizationId = useOrgSelectorStore(
@@ -38,6 +82,7 @@ export default function TasksPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [memberTaskCounts, setMemberTaskCounts] = useState({});
 
   const [newTask, setNewTask] = useState({
     title: "",
@@ -114,6 +159,15 @@ export default function TasksPage() {
             task.task_assignees?.map((ta) => ta.users).filter(Boolean) || [],
         }));
         setTasks(enriched);
+
+        // Build member task counts
+        const counts = {};
+        taskData.forEach((task) => {
+          (task.task_assignees || []).forEach((ta) => {
+            counts[ta.user_id] = (counts[ta.user_id] || 0) + 1;
+          });
+        });
+        setMemberTaskCounts(counts);
       }
       setLoading(false);
     }
@@ -139,6 +193,20 @@ export default function TasksPage() {
       setTasks((prev) =>
         prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)),
       );
+
+      const task = tasks.find((t) => t.id === taskId);
+      if (task && currentUserId && selectedOrganizationId) {
+        const assigneeIds = task.assignee_details?.map((a) => a.id) || [];
+        await sendTaskNotification({
+          orgId: selectedOrganizationId,
+          userId: currentUserId,
+          type: "task_status",
+          title: `Task ${newStatus === "completed" ? "Completed" : newStatus === "incomplete" ? "Marked Incomplete" : "Updated"}`,
+          message: `"${task.title}" status changed to ${newStatus}`,
+          taskId,
+          assigneeIds,
+        });
+      }
     }
   };
 
@@ -190,6 +258,17 @@ export default function TasksPage() {
         assignees: new Set(),
       });
       setCreateModalOpen(false);
+
+      const assigneeIds = Array.from(newTask.assignees);
+      await sendTaskNotification({
+        orgId: selectedOrganizationId,
+        userId: userData.id,
+        type: "task_created",
+        title: "New Task Assigned",
+        message: `"${newTask.title}" has been created${assigneeIds.length > 0 ? ` and assigned to ${assigneeIds.length} member(s)` : ""}`,
+        taskId: taskData.id,
+        assigneeIds,
+      });
     } catch (err) {
       console.error("Create task error:", err);
     } finally {
@@ -203,6 +282,8 @@ export default function TasksPage() {
 
     setDeleting(true);
     try {
+      const taskToDelete = tasks.find((t) => t.id === taskId);
+
       await supabase.from("task_assignees").delete().eq("task_id", taskId);
 
       const { error } = await supabase.from("tasks").delete().eq("id", taskId);
@@ -210,6 +291,19 @@ export default function TasksPage() {
       if (error) throw error;
 
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
+
+      if (taskToDelete && currentUserId && selectedOrganizationId) {
+        const assigneeIds = taskToDelete.assignee_details?.map((a) => a.id) || [];
+        await sendTaskNotification({
+          orgId: selectedOrganizationId,
+          userId: currentUserId,
+          type: "task_deleted",
+          title: "Task Deleted",
+          message: `"${taskToDelete.title}" has been deleted`,
+          taskId,
+          assigneeIds,
+        });
+      }
     } catch (err) {
       console.error("Delete task error:", err);
     } finally {
@@ -405,7 +499,9 @@ export default function TasksPage() {
                               selectedKeys={newTask.assignees}
                               onSelectionChange={handleAssigneeChange}
                             >
-                              {members.map((member) => (
+                              {members.map((member) => {
+                                const taskCount = memberTaskCounts[member.id] || 0;
+                                return (
                                 <ListBox.Item
                                   key={member.id}
                                   id={member.id}
@@ -430,11 +526,15 @@ export default function TasksPage() {
                                     <Label>{member.name || "Unknown"}</Label>
                                     <Description className="text-xs">
                                       {member.email || ""}
+                                      {taskCount > 0 && (
+                                        <span className="ml-1 text-warning font-medium">· {taskCount} task{taskCount > 1 ? "s" : ""} assigned</span>
+                                      )}
                                     </Description>
                                   </div>
                                   <ListBox.ItemIndicator />
                                 </ListBox.Item>
-                              ))}
+                                );
+                              })}
                             </ListBox>
                           </Surface>
                         </div>

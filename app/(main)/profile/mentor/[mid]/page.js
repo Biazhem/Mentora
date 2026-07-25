@@ -145,6 +145,76 @@ export default function MentorProfilePage({ params }) {
       } else {
         setHasRequested(true);
         setMessage("Mentorship request sent successfully!");
+
+        // Notify the mentor
+        const { data: mentorUser } = await supabase
+          .from("users")
+          .select("id")
+          .eq("clerk_id", mentor.clerk_id)
+          .maybeSingle();
+
+        if (mentorUser) {
+          await supabase.from("notifications").insert({
+            user_id: mentorUser.id,
+            org_id: null,
+            type: "mentorship",
+            title: "New Mentorship Request",
+            message: `${userData.name || "A student"} wants to connect with you for mentorship`,
+            entity_id: mentor.id,
+          });
+        }
+
+        // Notify the student (confirmation)
+        await supabase.from("notifications").insert({
+          user_id: userData.id,
+          org_id: null,
+          type: "mentorship",
+          title: "Mentorship Request Sent",
+          message: `Your mentorship request to ${mentor.displayName || "the mentor"} has been sent successfully`,
+          entity_id: mentor.id,
+        });
+
+        // Send email to mentor about new request
+        if (mentorUser) {
+          const { data: mentorUserData } = await supabase
+            .from("users")
+            .select("email")
+            .eq("id", mentorUser.id)
+            .maybeSingle();
+          if (mentorUserData?.email) {
+            try {
+              await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/send-email`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  to: mentorUserData.email,
+                  subject: "New Mentorship Request on Mentora",
+                  html: `<h2>New Mentorship Request</h2><p>${userData.name || "A student"} has requested mentorship from you on Mentora.</p><p><a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/mentors/requests">View Request</a></p>`,
+                }),
+              });
+            } catch (e) { console.error("Email error:", e); }
+          }
+        }
+
+        // Send confirmation email to student
+        const { data: studentEmailData } = await supabase
+          .from("users")
+          .select("email")
+          .eq("id", userData.id)
+          .maybeSingle();
+        if (studentEmailData?.email) {
+          try {
+            await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/send-email`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                to: studentEmailData.email,
+                subject: "Mentorship Request Sent",
+                html: `<h2>Mentorship Request Sent</h2><p>Your mentorship request to ${mentor.displayName || "your mentor"} has been sent. You will be notified when they respond.</p><p><a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/mentors">Browse Mentors</a></p>`,
+              }),
+            });
+          } catch (e) { console.error("Email error:", e); }
+        }
       }
     } catch (err) {
       console.error("Request error:", err);

@@ -13,6 +13,7 @@ import {
 } from "@heroui/react";
 import { FabButton } from "../custom/drawer";
 import { ThemeSwitch } from "../theme/theme-switcher";
+import NotificationButton from "./notification-drawer";
 import { Settings, Video } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -21,6 +22,7 @@ import { useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import { NavigationSidebarSmall } from "./navigation-sidebar-sm";
 import { supabase } from "@/lib/supabase";
+import { Bell } from "lucide-react";
 
 export default function MainHeader({
   fullName,
@@ -184,6 +186,7 @@ export default function MainHeader({
             </Button>
           </Link>
         )}
+        <NotificationButton />
         <ThemeSwitch />
         <Popover>
           <Button isIconOnly>
@@ -231,7 +234,7 @@ export default function MainHeader({
           </Popover.Content>
         </Popover>
       </div>
-      <FabButton />
+      {organizations.length > 0 && <FabButton />}
     </div>
   );
 }

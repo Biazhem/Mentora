@@ -263,19 +263,9 @@ export default function JobDetailPage({ params }) {
               <Button size="lg" isDisabled>
                 Applied
               </Button>
-            ) : !job.is_easy_apply ? (
-              <a
-                href={job.external_apply_url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button size="lg">Apply Now</Button>
-              </a>
             ) : (
               <Modal>
-                <Button size="lg">
-                  {job.is_easy_apply ? "Easy Apply" : "Apply Now"}
-                </Button>
+                <Button size="lg">Apply Now</Button>
                 <Modal.Backdrop>
                   <Modal.Container>
                     <Modal.Dialog>
@@ -285,14 +275,13 @@ export default function JobDetailPage({ params }) {
                       </Modal.Header>
                       <Modal.Body>
                         <Description>
-                          Fields marked with * are required. Cover letter and
-                          resume URL are optional.
+                          Cover letter and resume URL are optional.
                         </Description>
                         <div className="space-y-3">
                           <TextField>
                             <Label>Cover Letter (Optional)</Label>
                             <TextArea
-                              placeholder="Tell the employer why you're a great fit for this role..."
+                              placeholder="Tell the employer why you are a great fit for this role..."
                               rows={5}
                               fullWidth
                               value={coverLetter}

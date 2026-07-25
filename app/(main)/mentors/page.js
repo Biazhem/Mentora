@@ -1,17 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
 import { Button, InputGroup, ListBox, Select } from "@heroui/react";
 import { supabase } from "@/lib/supabase";
-import { Search, Trash } from "lucide-react";
+import { Search } from "lucide-react";
 import { MentorDrawer } from "@/components/custom/drawer-mentor";
 import Link from "next/link";
 
 export default function MentorsPage() {
+  const { user } = useUser();
   const [search, setSearch] = useState("");
   const [expertiseFilter, setExpertiseFilter] = useState("all");
   const [mentors, setMentors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isMentor, setIsMentor] = useState(false);
 
   useEffect(() => {
     async function fetchMentors() {
@@ -47,6 +50,19 @@ export default function MentorsPage() {
 
     fetchMentors();
   }, []);
+
+  useEffect(() => {
+    async function checkMentor() {
+      if (!user) return;
+      const { data } = await supabase
+        .from("mentors")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .maybeSingle();
+      setIsMentor(!!data);
+    }
+    checkMentor();
+  }, [user]);
 
   const expertiseOptions = [
     "all",
@@ -108,16 +124,11 @@ export default function MentorsPage() {
           </Link>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button
-            isIconOnly
-            variant="danger-soft"
-            onPress={() => {
-              setSearch("");
-              setExpertiseFilter("all");
-            }}
-          >
-            <Trash />
-          </Button>
+          {isMentor && (
+            <Link href="/mentors/requests">
+              <Button>Requests</Button>
+            </Link>
+          )}
           <Select
             selectedKey={expertiseFilter}
             onSelectionChange={(key) => setExpertiseFilter(key || "all")}

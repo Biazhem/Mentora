@@ -82,7 +82,7 @@ export default function DashboardPage() {
   const [dashboardData, setDashboardData] = useState({});
 
   useEffect(() => {
-    if (!user || !selectedOrganizationId) {
+    if (!user) {
       setLoading(false);
       return;
     }
@@ -99,16 +99,6 @@ export default function DashboardPage() {
       if (!userData) { setLoading(false); return; }
       setUserId(userData.id);
 
-      const { data: memberData } = await supabase
-        .from("organization_members")
-        .select("role")
-        .eq("organization_id", selectedOrganizationId)
-        .eq("user_id", userData.id)
-        .maybeSingle();
-
-      const role = memberData?.role || "member";
-      setUserRole(role);
-
       const { data: mentorData } = await supabase
         .from("mentors")
         .select("id")
@@ -121,16 +111,24 @@ export default function DashboardPage() {
         .eq("clerk_id", user.id)
         .maybeSingle();
 
-      let effectiveRole = role;
-      if (role !== "admin" && mentorData) effectiveRole = "mentor";
-      else if (role !== "admin" && studentData) effectiveRole = "student";
+      const { data: founderOrg } = await supabase
+        .from("organizations")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .maybeSingle();
+
+      let effectiveRole = "member";
+      if (founderOrg) effectiveRole = "admin";
+      else if (mentorData) effectiveRole = "mentor";
+      else if (studentData) effectiveRole = "student";
 
       setUserRole(effectiveRole);
 
       if (effectiveRole === "admin") {
-        await loadOrgDashboard(selectedOrganizationId, userData.id);
+        const orgToUse = selectedOrganizationId || founderOrg?.id;
+        if (orgToUse) await loadOrgDashboard(orgToUse, userData.id);
       } else if (effectiveRole === "student") {
-        await loadStudentDashboard(userData.id, selectedOrganizationId);
+        await loadStudentDashboard(userData.id);
       } else if (effectiveRole === "mentor") {
         await loadMentorDashboard(userData.id, selectedOrganizationId);
       } else {
@@ -190,7 +188,14 @@ export default function DashboardPage() {
     });
   }
 
-  async function loadStudentDashboard(currentUserId, orgId) {
+  async function loadStudentDashboard(currentUserId) {
+    const { data: studentRow } = await supabase
+      .from("students")
+      .select("id")
+      .eq("clerk_id", user.id)
+      .maybeSingle();
+    const studentId = studentRow?.id || null;
+
     const [appliedJobsRes, tasksRes, mentorshipRes] = await Promise.all([
       supabase
         .from("job_applications")
@@ -202,12 +207,14 @@ export default function DashboardPage() {
         .from("task_assignees")
         .select("task_id, tasks(id, title, status, org_id)")
         .eq("user_id", currentUserId),
-      supabase
-        .from("mentorship_requests")
-        .select("id, status, mentors(name, field)")
-        .eq("student_id", currentUserId)
-        .order("requested_at", { ascending: false })
-        .limit(5),
+      studentId
+        ? supabase
+            .from("mentorship_requests")
+            .select("id, status, mentors(name, field)")
+            .eq("student_id", studentId)
+            .order("requested_at", { ascending: false })
+            .limit(5)
+        : { data: null },
     ]);
 
     const taskList = (tasksRes.data || [])
@@ -316,7 +323,9 @@ export default function DashboardPage() {
     });
   }
 
-  if (!selectedOrganizationId) {
+  if (!selectedOrganizationId && userRole && userRole !== "admin") {
+    // Students, mentors, members can view dashboard without org
+  } else if (!selectedOrganizationId && userRole === "admin") {
     return (
       <div className="container py-10">
         <Alert color="warning">Select an organization from the header to view your dashboard.</Alert>

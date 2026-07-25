@@ -505,9 +505,11 @@ export default function OrganizationProfile({ params }) {
                             </Popover.Dialog>
                           </Popover.Content>
                         </Popover>
-                        <Button isIconOnly size="sm" variant="tertiary">
-                          <UserIcon weight="bold" />
-                        </Button>
+                        <Link href={`/profile?id=${member.user_id}`}>
+                          <Button isIconOnly size="sm" variant="tertiary">
+                            <UserIcon weight="bold" />
+                          </Button>
+                        </Link>
                       </Table.Cell>
                     </Table.Row>
                   ))}

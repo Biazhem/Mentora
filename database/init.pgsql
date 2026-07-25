@@ -70,9 +70,9 @@ CREATE TABLE public.students (
   semester text NOT NULL DEFAULT ''::text,
   expertise text NOT NULL DEFAULT ''::text,
   skills text NOT NULL DEFAULT ''::text,
-  avatar_url text NOT NULL DEFAULT ''::text,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
+  avatar_url text NOT NULL DEFAULT ''::text,
   CONSTRAINT students_pkey PRIMARY KEY (id),
   CONSTRAINT students_clerk_id_fkey FOREIGN KEY (clerk_id) REFERENCES public.users(clerk_id)
 );
@@ -239,6 +239,7 @@ CREATE TABLE public.team_task_assignees (
   status text NOT NULL DEFAULT 'pending'::text,
   completed_at timestamp with time zone,
   assigned_at timestamp with time zone NOT NULL DEFAULT now(),
+  links ARRAY DEFAULT '{}'::text[],
   CONSTRAINT team_task_assignees_pkey PRIMARY KEY (task_id, student_id),
   CONSTRAINT team_task_assignees_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.team_tasks(id),
   CONSTRAINT team_task_assignees_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
@@ -278,4 +279,17 @@ CREATE TABLE public.meeting_participants (
   CONSTRAINT meeting_participants_pkey PRIMARY KEY (meeting_id, user_id),
   CONSTRAINT meeting_participants_meeting_id_fkey FOREIGN KEY (meeting_id) REFERENCES public.meetings(id),
   CONSTRAINT meeting_participants_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.notifications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  org_id uuid,
+  type text NOT NULL,
+  title text NOT NULL,
+  message text NOT NULL DEFAULT ''::text,
+  entity_id uuid,
+  is_read boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT notifications_pkey PRIMARY KEY (id),
+  CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );

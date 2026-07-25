@@ -15,7 +15,7 @@ import { useUser } from "@clerk/nextjs";
 import { useState } from "react";
 import { Plus, X, Pencil, PenLine } from "lucide-react";
 
-export function MentorComponent() {
+export function MentorComponent({ viewOnly }) {
   const { user, isLoaded } = useUser();
   const [mentor, setMentor] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -150,7 +150,7 @@ export function MentorComponent() {
               <Typography.Heading level={1} className="tracking-tight font-bold">{mentor.name}</Typography.Heading>
               <p className="text-base text-muted-foreground font-medium">{mentor.bio}</p>
             </div>
-            <Modal>
+            {!viewOnly && (<Modal>
               <Button size="sm" variant="flat">Edit Profile</Button>
               <Modal.Backdrop>
                 <Modal.Container>
@@ -210,6 +210,7 @@ export function MentorComponent() {
                 </Modal.Container>
               </Modal.Backdrop>
             </Modal>
+            )}
           </div>
 
           <Label className="text-default-400 font-mono text-sm">{mentor.email}</Label>
@@ -242,7 +243,7 @@ export function MentorComponent() {
         <div className="lg:col-span-2 flex flex-col gap-3">
           <div className="flex justify-between items-center">
             <Typography.Heading level={3} className="font-semibold">About</Typography.Heading>
-            <Modal>
+            {!viewOnly && (<Modal>
               <Button size="sm" variant="ghost">Edit</Button>
               <Modal.Backdrop>
                 <Modal.Container>
@@ -268,6 +269,7 @@ export function MentorComponent() {
                 </Modal.Container>
               </Modal.Backdrop>
             </Modal>
+            )}
           </div>
           <p className="text-sm text-default-600 leading-relaxed bg-default-50 p-4 rounded-xl border border-default-100">
             {mentor.bio}
@@ -303,7 +305,7 @@ export function MentorComponent() {
       <div className="flex flex-col gap-4 pt-2">
         <div className="flex justify-between items-center">
           <Typography.Heading level={3} className="font-semibold">Work Experience</Typography.Heading>
-          <Modal>
+          {!viewOnly && (<Modal>
             <Button size="sm" variant="ghost">Edit</Button>
             <Modal.Backdrop>
               <Modal.Container size="cover">
@@ -360,6 +362,7 @@ export function MentorComponent() {
               </Modal.Container>
             </Modal.Backdrop>
           </Modal>
+          )}
         </div>
         {expList.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

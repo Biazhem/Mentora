@@ -1,0 +1,13 @@
+{
+  "$schema": "https://mimo.xiaomi.com/mimocode/config.json",
+  "mcp": {
+    "heroui-react": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@heroui/react-mcp@latest"
+      ]
+    }
+  }
+}

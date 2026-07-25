@@ -138,7 +138,7 @@ export function MentorDrawer({ mentor }) {
             <Drawer.Footer>
               <Button slot="close" variant="secondary">Close</Button>
               <Link href={`/profile/mentor/${mentor.id}`}>
-                <Button slot="close">Request Mentorship</Button>
+                <Button slot="close">Go Profile</Button>
               </Link>
             </Drawer.Footer>
           </Drawer.Dialog>
