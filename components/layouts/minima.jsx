@@ -54,6 +54,7 @@ export function MinimaDashboard({ children }) {
 
   const filteredNavItems = navItems.filter((item) => {
     if (item.url === "/tasks" && !isMember) return false;
+    if (item.url === "/discussion/meetings" && !isMember) return false;
     return true;
   });
 

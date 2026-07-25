@@ -234,7 +234,7 @@ export default function MainHeader({
           </Popover.Content>
         </Popover>
       </div>
-      <FabButton />
+      {organizations.length > 0 && <FabButton />}
     </div>
   );
 }

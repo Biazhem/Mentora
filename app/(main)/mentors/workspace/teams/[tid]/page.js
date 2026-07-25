@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use, useRef } from "react";
+import { useState, useEffect, use } from "react";
 import { useUser } from "@clerk/nextjs";
 import { supabase } from "@/lib/supabase";
 import {
@@ -56,7 +56,7 @@ export default function TeamDetailPage({ params }) {
       setAccessDenied(false);
       try {
         const { data: teamData, error: teamError } = await supabase
-          .from("mentor_teams").select("*").eq("id", tid).maybeSingle();
+          .from("mentor_teams").select("*, mentors(name, users!clerk_id(name, pic))").eq("id", tid).maybeSingle();
         if (teamError) throw teamError;
         if (!teamData) { setTeam(null); return; }
         setTeam(teamData);
@@ -227,8 +227,7 @@ export default function TeamDetailPage({ params }) {
     }
   };
 
-  const handleTaskStatusChange = async (taskId, studentId, newStatus, targetUserId) => {
-    if (!canManageTeam && targetUserId !== currentUserId) return;
+  const handleTaskStatusChange = async (taskId, studentId, newStatus) => {
     const { error } = await supabase
       .from("team_task_assignees")
       .update({ status: newStatus, completed_at: newStatus === "completed" ? new Date().toISOString() : null })
@@ -240,16 +239,19 @@ export default function TeamDetailPage({ params }) {
         const assignee_details = t.assignee_details.map((a) =>
           a.student_id === studentId ? { ...a, status: newStatus } : a
         );
-        return { ...t, status: assignee_details.every((a) => a.status === "completed") ? "completed" : "pending", assignee_details };
+        const allCompleted = assignee_details.length > 0 && assignee_details.every((a) => a.status === "completed");
+        const anyDeclined = assignee_details.some((a) => a.status === "declined");
+        return { ...t, status: allCompleted ? "completed" : anyDeclined ? "declined" : "pending", assignee_details };
       }));
     }
   };
 
   const totalTasks = tasks.length;
-  const completedTasks = tasks.filter((t) => t.status === "completed").length;
-  const declinedTasks = tasks.filter((t) => t.assignee_details.some((a) => a.status === "declined")).length;
-  const pendingTasks = totalTasks - completedTasks - declinedTasks;
-  const progressPercent = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+  const totalAssignees = tasks.reduce((sum, t) => sum + t.assignee_details.length, 0);
+  const completedAssignees = tasks.reduce((sum, t) => sum + t.assignee_details.filter((a) => a.status === "completed").length, 0);
+  const declinedAssignees = tasks.reduce((sum, t) => sum + t.assignee_details.filter((a) => a.status === "declined").length, 0);
+  const pendingAssignees = totalAssignees - completedAssignees - declinedAssignees;
+  const progressPercent = totalAssignees === 0 ? 0 : Math.round((completedAssignees / totalAssignees) * 100);
 
   if (loading) return <div className="py-12 px-4 animate-pulse space-y-4"><div className="h-8 w-48 bg-accent-soft-hover rounded" /><div className="h-12 bg-accent-soft-hover rounded" /><div className="h-12 bg-accent-soft-hover rounded" /></div>;
   if (accessDenied) return <div className="py-12 px-4"><Alert color="danger">You do not have access to this team.</Alert></div>;
@@ -267,10 +269,17 @@ export default function TeamDetailPage({ params }) {
           <h1 className="text-2xl font-bold">{team.name}</h1>
           <p className="text-sm text-muted">{team.description || "No description"}</p>
           <div className="flex items-center gap-3 mt-2 flex-wrap">
+            <Chip color="primary" variant="soft">
+              <Avatar size="sm" className="size-4 mr-1">
+                {team.mentors?.users?.pic ? <Avatar.Image src={team.mentors.users.pic} alt={team.mentors.name} /> : null}
+                <Avatar.Fallback className="text-[8px]">{team.mentors?.name?.[0] || "?"}</Avatar.Fallback>
+              </Avatar>
+              Mentor: {team.mentors?.name || "Unknown"}
+            </Chip>
             <Chip color="primary" variant="soft">{members.length} Members</Chip>
-            <Chip color="success" variant="soft">{completedTasks}/{totalTasks} Completed</Chip>
-            {declinedTasks > 0 && <Chip color="danger" variant="soft">{declinedTasks} Declined</Chip>}
-            {pendingTasks > 0 && <Chip color="warning" variant="soft">{pendingTasks} Pending</Chip>}
+            <Chip color="success" variant="soft">{completedAssignees}/{totalAssignees} Tasks Completed</Chip>
+            {declinedAssignees > 0 && <Chip color="danger" variant="soft">{declinedAssignees} Declined</Chip>}
+            {pendingAssignees > 0 && <Chip color="warning" variant="soft">{pendingAssignees} Pending</Chip>}
           </div>
         </div>
         {canManageTeam && (
@@ -392,106 +401,130 @@ export default function TeamDetailPage({ params }) {
       {/* Tasks Table */}
       <div>
         <h2 className="text-lg font-bold mb-3">Tasks ({tasks.length})</h2>
-        {tasks.length > 0 ? (
+        {tasks.length > 0 ? (() => {
+          const taskRows = tasks.flatMap((task) =>
+            task.assignee_details.length > 0
+              ? task.assignee_details.map((a) => ({ ...a, task }))
+              : [{ task, student_id: null, name: "Unassigned", status: "pending", links: [], pic: null }]
+          );
+          return (
           <Table>
             <Table.ScrollContainer>
-              <Table.Content aria-label="Team tasks" className="min-w-[700px]">
+              <Table.Content aria-label="Team tasks" className="min-w-[800px]">
                 <Table.Header>
                   <Table.Column isRowHeader>Task</Table.Column>
-                  <Table.Column>Assignees</Table.Column>
+                  <Table.Column>Assignee</Table.Column>
                   <Table.Column>Status</Table.Column>
                   <Table.Column className="justify-end">Links</Table.Column>
                 </Table.Header>
                 <Table.Body>
-                  {tasks.map((task) => (
-                    <Table.Row key={task.id}>
+                  {taskRows.map((row, idx) => (
+                    <Table.Row key={`${row.task.id}-${row.student_id || idx}`}>
                       <Table.Cell>
-                        <div>
-                          <p className="font-medium text-sm">{task.title}</p>
-                          {task.description && <p className="text-xs text-muted line-clamp-1">{task.description}</p>}
-                          {task.start_date && <p className="text-[10px] text-muted">{task.start_date}{task.end_date ? ` to ${task.end_date}` : ""}</p>}
+                        <p className="font-medium text-sm">{row.task.title}</p>
+                      </Table.Cell>
+                      <Table.Cell>
+                        <div className="flex items-center gap-1">
+                          <Avatar size="sm" className="size-5">
+                            {row.pic ? <Avatar.Image src={row.pic} alt={row.name} /> : null}
+                            <Avatar.Fallback className="text-[8px]">{row.name?.[0] || "?"}</Avatar.Fallback>
+                          </Avatar>
+                          <span className="text-xs">{row.name || "Unassigned"}</span>
                         </div>
                       </Table.Cell>
                       <Table.Cell>
-                        <div className="flex flex-wrap gap-2">
-                          {task.assignee_details.map((a, idx) => (
-                            <div key={idx} className="flex items-center gap-1">
-                              <Avatar size="sm" className="size-5">
-                                {a.pic ? <Avatar.Image src={a.pic} alt={a.name} /> : null}
-                                <Avatar.Fallback className="text-[8px]">{a.name?.split(" ").map((n) => n[0]).join("").toUpperCase() || "?"}</Avatar.Fallback>
-                              </Avatar>
-                              {canManageTeam || a.user_id === currentUserId ? (
-                                <Select className="w-24" placeholder="Status" selectedKeys={[a.status]}
-                                  onSelectionChange={(keys) => { const val = keys instanceof Set ? Array.from(keys)[0] : keys; if (val) handleTaskStatusChange(task.id, a.student_id, val, a.user_id); }}>
-                                  <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
-                                  <Select.Popover>
-                                    <ListBox>
-                                      <ListBox.Item id="pending" textValue="Pending">Pending<ListBox.ItemIndicator /></ListBox.Item>
-                                      <ListBox.Item id="completed" textValue="Completed">Completed<ListBox.ItemIndicator /></ListBox.Item>
-                                      <ListBox.Item id="declined" textValue="Declined">Declined<ListBox.ItemIndicator /></ListBox.Item>
-                                    </ListBox>
-                                  </Select.Popover>
-                                </Select>
-                              ) : (
-                                <Chip size="sm" variant="soft" color={a.status === "completed" ? "success" : a.status === "declined" ? "danger" : "default"}>{a.status}</Chip>
-                              )}
-                            </div>
-                          ))}
-                        </div>
+                        {row.student_id && row.user_id === currentUserId ? (
+                          <Select className="w-24" placeholder="Status" selectedKeys={new Set([row.status || "pending"])}
+                            onSelectionChange={(keys) => { const val = keys instanceof Set ? Array.from(keys)[0] : keys; if (val) handleTaskStatusChange(row.task.id, row.student_id, val); }}>
+                            <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+                            <Select.Popover>
+                              <ListBox>
+                                <ListBox.Item id="pending" textValue="Pending">Pending<ListBox.ItemIndicator /></ListBox.Item>
+                                <ListBox.Item id="completed" textValue="Completed">Completed<ListBox.ItemIndicator /></ListBox.Item>
+                                <ListBox.Item id="declined" textValue="Declined">Declined<ListBox.ItemIndicator /></ListBox.Item>
+                              </ListBox>
+                            </Select.Popover>
+                          </Select>
+                        ) : row.student_id ? (
+                          <Chip size="sm" variant="soft" color={row.status === "completed" ? "success" : row.status === "declined" ? "danger" : "default"}>{row.status}</Chip>
+                        ) : <Chip size="sm" variant="soft">-</Chip>}
                       </Table.Cell>
                       <Table.Cell>
-                        <Chip size="sm" color={task.status === "completed" ? "success" : task.assignee_details.some((a) => a.status === "declined") ? "danger" : "warning"}>{task.status}</Chip>
-                      </Table.Cell>
-                      <Table.Cell>
-                        <Modal>
-                          <Modal.Trigger>
-                            <Button size="sm" variant="soft">
-                              <Link2 className="size-3" />
-                              {(task.assignee_details[0]?.links?.length || 0) > 0 ? `${task.assignee_details[0].links.length} links` : "Add Links"}
-                            </Button>
-                          </Modal.Trigger>
-                          <Modal.Backdrop>
-                            <Modal.Container size="md">
-                              <Modal.Dialog>
-                                <Modal.CloseTrigger />
-                                <Modal.Header><Modal.Heading>{task.title} - Links</Modal.Heading></Modal.Header>
-                                <Modal.Body>
-                                  <p className="text-sm text-muted mb-2">Enter one URL per line:</p>
-                                  <TextArea
-                                    placeholder={"https://drive.google.com/file1.pdf\nhttps://figma.com/design"}
-                                    rows={6} fullWidth
-                                    defaultValue={(task.assignee_details[0]?.links || []).join("\n")}
-                                    id={`links-${task.id}`}
-                                  />
-                                  {(task.assignee_details[0]?.links?.length || 0) > 0 && (
-                                    <div className="flex flex-wrap gap-1 mt-2">
-                                      {task.assignee_details[0].links.map((url, idx) => (
-                                        <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
-                                          <Chip size="sm" variant="soft">{url.length > 40 ? url.slice(0, 40) + "..." : url}</Chip>
-                                        </a>
-                                      ))}
-                                    </div>
-                                  )}
-                                </Modal.Body>
-                                <Modal.Footer>
-                                  <Button slot="close" variant="secondary">Cancel</Button>
-                                  <Button
-                                    slot="close"
-                                    onClick={() => {
-                                      const el = document.getElementById(`links-${task.id}`);
-                                      if (!el) return;
-                                      const urls = el.value.split("\n").map((u) => u.trim()).filter(Boolean);
-                                      for (const a of task.assignee_details) {
-                                        supabase.from("team_task_assignees").update({ links: urls }).eq("task_id", task.id).eq("student_id", a.student_id);
-                                      }
-                                      setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, assignee_details: t.assignee_details.map((a) => ({ ...a, links: urls })) } : t));
-                                    }}
-                                  >Save</Button>
-                                </Modal.Footer>
-                              </Modal.Dialog>
-                            </Modal.Container>
-                          </Modal.Backdrop>
-                        </Modal>
+                        {row.student_id && row.user_id === currentUserId ? (
+                          <div className="flex flex-wrap gap-1 items-center">
+                            {(row.links?.length || 0) > 0 && row.links.map((url, urlIdx) => (
+                              <a key={urlIdx} href={url} target="_blank" rel="noopener noreferrer">
+                                <Chip size="sm" variant="soft">{url.length > 30 ? url.slice(0, 30) + "..." : url}</Chip>
+                              </a>
+                            ))}
+                            <Modal>
+                              <Modal.Trigger>
+                                <Button size="sm" variant="soft">
+                                  <Link2 className="size-3" />
+                                  {(row.links?.length || 0) > 0 ? "Edit" : "Add Links"}
+                                </Button>
+                              </Modal.Trigger>
+                              <Modal.Backdrop>
+                                <Modal.Container size="md">
+                                  <Modal.Dialog>
+                                    <Modal.CloseTrigger />
+                                    <Modal.Header><Modal.Heading>{row.task.title} - Links ({row.name})</Modal.Heading></Modal.Header>
+                                    <Modal.Body>
+                                      <p className="text-sm text-muted mb-2">Enter comma-separated URLs:</p>
+                                      <TextArea placeholder={"https://drive.google.com/file1.pdf, https://figma.com/design"} rows={6} fullWidth defaultValue={(row.links || []).join(", ")} id={`links-${row.task.id}-${row.student_id}`} />
+                                      {(row.links?.length || 0) > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                          {row.links.map((url, urlIdx) => (
+                                            <a key={urlIdx} href={url} target="_blank" rel="noopener noreferrer">
+                                              <Chip size="sm" variant="soft">{url.length > 40 ? url.slice(0, 40) + "..." : url}</Chip>
+                                            </a>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </Modal.Body>
+                                    <Modal.Footer>
+                                      <Button slot="close" variant="secondary">Cancel</Button>
+                                      <Button slot="close" onClick={async () => {
+                                        const el = document.getElementById(`links-${row.task.id}-${row.student_id}`);
+                                        if (!el) return;
+                                        const urls = el.value.split(",").map((u) => u.trim()).filter(Boolean);
+                                        const { error: statusErr } = await supabase
+                                          .from("team_task_assignees")
+                                          .update({ status: "completed", completed_at: new Date().toISOString() })
+                                          .eq("task_id", row.task.id)
+                                          .eq("student_id", row.student_id);
+                                        if (statusErr) console.error("Status update error:", statusErr);
+
+                                        if (urls.length > 0) {
+                                          const { error: linksErr } = await supabase
+                                            .from("team_task_assignees")
+                                            .update({ links: urls })
+                                            .eq("task_id", row.task.id)
+                                            .eq("student_id", row.student_id);
+                                          if (linksErr) console.error("Links save error:", linksErr);
+                                        }
+
+                                        setTasks((prev) => prev.map((t) => {
+                                          if (t.id !== row.task.id) return t;
+                                          const assignee_details = t.assignee_details.map((a) => a.student_id === row.student_id ? { ...a, links: urls, status: "completed" } : a);
+                                          return { ...t, status: assignee_details.every((a) => a.status === "completed") ? "completed" : "pending", assignee_details };
+                                        }));
+                                      }}>Submit</Button>
+                                    </Modal.Footer>
+                                  </Modal.Dialog>
+                                </Modal.Container>
+                              </Modal.Backdrop>
+                            </Modal>
+                          </div>
+                        ) : row.student_id ? (
+                          <div className="flex flex-wrap gap-1">
+                            {(row.links?.length || 0) > 0 ? row.links.map((url, urlIdx) => (
+                              <a key={urlIdx} href={url} target="_blank" rel="noopener noreferrer">
+                                <Chip size="sm" variant="soft">{url.length > 30 ? url.slice(0, 30) + "..." : url}</Chip>
+                              </a>
+                            )) : <Chip size="sm" variant="soft">No links</Chip>}
+                          </div>
+                        ) : null}
                       </Table.Cell>
                     </Table.Row>
                   ))}
@@ -499,7 +532,8 @@ export default function TeamDetailPage({ params }) {
               </Table.Content>
             </Table.ScrollContainer>
           </Table>
-        ) : <p className="text-sm text-muted">No tasks yet.</p>}
+          );
+        })() : <p className="text-sm text-muted">No tasks yet.</p>}
       </div>
     </div>
   );

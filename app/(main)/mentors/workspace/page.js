@@ -50,16 +50,22 @@ export default function WorkspacePage() {
               .select("*", { count: "exact", head: true })
               .eq("team_id", team.id);
 
-            const { count: taskCount } = await supabase
+            const { data: taskIds } = await supabase
               .from("team_tasks")
-              .select("*", { count: "exact", head: true })
+              .select("id")
               .eq("team_id", team.id);
 
-            const { count: completedCount } = await supabase
-              .from("team_tasks")
-              .select("*", { count: "exact", head: true })
-              .eq("team_id", team.id)
-              .eq("status", "completed");
+            let totalAssignees = 0;
+            let completedAssignees = 0;
+            if (taskIds && taskIds.length > 0) {
+              const { data: assigneeData } = await supabase
+                .from("team_task_assignees")
+                .select("status")
+                .in("task_id", taskIds.map((t) => t.id));
+
+              totalAssignees = assigneeData?.length || 0;
+              completedAssignees = assigneeData?.filter((a) => a.status === "completed").length || 0;
+            }
 
             const { data: memberRows } = await supabase
               .from("team_members")
@@ -67,12 +73,20 @@ export default function WorkspacePage() {
               .eq("team_id", team.id)
               .limit(3);
 
+            const { data: mentorInfo } = await supabase
+              .from("mentors")
+              .select("name, users!clerk_id(name, pic)")
+              .eq("id", team.mentor_id)
+              .maybeSingle();
+
             return {
               ...team,
               member_count: memberCount || 0,
-              task_count: taskCount || 0,
-              completed_count: completedCount || 0,
+              total_assignees: totalAssignees,
+              completed_assignees: completedAssignees,
               preview_members: memberRows || [],
+              mentor_name: mentorInfo?.name || "Unknown",
+              mentor_pic: mentorInfo?.users?.pic || null,
             };
           })
         );
@@ -356,8 +370,17 @@ export default function WorkspacePage() {
             <Link key={team.id} href={`/mentors/workspace/teams/${team.id}`}>
               <Card className="cursor-pointer transition hover:shadow-md">
                 <Card.Header>
-                  <div className="flex justify-between items-center">
-                    <Card.Title>{team.name}</Card.Title>
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 min-w-0">
+                      <Card.Title>{team.name}</Card.Title>
+                      <div className="flex items-center gap-1 mt-1">
+                        <Avatar size="sm" className="size-4">
+                          {team.mentor_pic ? <Avatar.Image src={team.mentor_pic} alt={team.mentor_name} /> : null}
+                          <Avatar.Fallback className="text-[8px]">{team.mentor_name?.[0] || "?"}</Avatar.Fallback>
+                        </Avatar>
+                        <span className="text-xs text-muted truncate">{team.mentor_name}</span>
+                      </div>
+                    </div>
                     <div className="flex items-center -space-x-3 *:ring-2 *:ring-background">
                       {team.preview_members.slice(0, 3).map((m, idx) => (
                         <Avatar key={idx} size="sm">
@@ -386,11 +409,11 @@ export default function WorkspacePage() {
                     className="w-full"
                     maxValue={100}
                     minValue={0}
-                    value={progressPercent(team.completed_count, team.task_count)}
+                    value={progressPercent(team.completed_assignees, team.total_assignees)}
                   >
                     <div className="flex items-center gap-1">
                       <Label>Tasks</Label>
-                      <Chip size="sm">{team.completed_count}/{team.task_count}</Chip>
+                      <Chip size="sm">{team.completed_assignees}/{team.total_assignees} Assignees</Chip>
                     </div>
                     <ProgressBar.Output />
                     <ProgressBar.Track>
