@@ -99,10 +99,15 @@ export default function MainHeader({
   const segments = pathname.split("/").filter(Boolean);
   const breadcrumbs = segments.map((segment, index) => {
     const href = `/${segments.slice(0, index + 1).join("/")}`;
-    const label = segment
-      .split("-")
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(" ");
+    // Detect UUID-like segments (with or without dashes) and replace with literal "id"
+    const isUuid = /^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[0-9a-fA-F]{32})$/.test(segment.replace(/\s+/g, ""));
+
+    const label = isUuid
+      ? "id"
+      : segment
+          .split("-")
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(" ");
 
     return { href, label };
   });

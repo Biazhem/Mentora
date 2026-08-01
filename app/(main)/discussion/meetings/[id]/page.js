@@ -39,6 +39,7 @@ export default function MeetingPage({ params }) {
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ending, setEnding] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [isHost, setIsHost] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [transcript, setTranscript] = useState([]);
@@ -607,6 +608,23 @@ export default function MeetingPage({ params }) {
     }
   };
 
+  const handleDeleteMeeting = async () => {
+    if (!confirm("Delete this meeting? This action cannot be undone.")) return;
+    setDeleting(true);
+    try {
+      // remove participants (safer) then delete meeting
+      await supabase.from("meeting_participants").delete().eq("meeting_id", id);
+      const { error } = await supabase.from("meetings").delete().eq("id", id);
+      if (error) throw error;
+      router.push("/discussion/meetings");
+    } catch (err) {
+      console.error("Delete meeting error:", err);
+      setCallError(`Could not delete meeting: ${formatSupabaseError(err)}`);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleLeaveMeeting = () => {
     if (recognitionRef.current && sttRunningRef.current) {
       recognitionRef.current.stop();
@@ -671,10 +689,13 @@ export default function MeetingPage({ params }) {
             <div className="flex items-center gap-2 mb-2">
               <h1 className="text-2xl font-bold">{meeting.title}</h1>
               {(isHost || isAdmin) && (
-                <button
-                  onClick={() => { setNewTitle(meeting.title); setEditingTitle(true); }}
-                  className="text-xs text-muted hover:text-foreground"
-                >Edit</button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setNewTitle(meeting.title); setEditingTitle(true); }}
+                    className="text-xs text-muted hover:text-foreground"
+                  >Edit</button>
+                  <Button variant="danger" size="sm" onPress={handleDeleteMeeting} isLoading={deleting} className="ml-2">Delete</Button>
+                </div>
               )}
             </div>
           )}
@@ -771,10 +792,13 @@ export default function MeetingPage({ params }) {
           <div className="flex items-center gap-2">
             <p className="text-sm font-medium">{meeting.title}</p>
             {(isHost || isAdmin) && (
-              <button
-                onClick={() => { setNewTitle(meeting.title); setEditingTitle(true); }}
-                className="text-xs text-muted hover:text-foreground"
-              >Edit</button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setNewTitle(meeting.title); setEditingTitle(true); }}
+                  className="text-xs text-muted hover:text-foreground"
+                >Edit</button>
+                <Button variant="danger" size="sm" onPress={handleDeleteMeeting} isLoading={deleting} className="ml-2">Delete</Button>
+              </div>
             )}
             <Chip color="success">Live</Chip>
           </div>

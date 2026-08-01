@@ -33,10 +33,14 @@ export default function WorkspacePage() {
   const [creating, setCreating] = useState(false);
   const [mentorId, setMentorId] = useState(null);
 
-  useEffect(() => {
-    async function init() {
-      if (!user) return;
+  const [fetchError, setFetchError] = useState(null);
 
+  const loadWorkspace = async () => {
+    setFetchError(null);
+    if (!user) return;
+
+    setLoading(true);
+    try {
       const loadTeams = async (teamRows) => {
         if (!teamRows || teamRows.length === 0) {
           setTeams([]);
@@ -73,11 +77,23 @@ export default function WorkspacePage() {
               .eq("team_id", team.id)
               .limit(3);
 
+            // safe mentor lookup: fetch mentor row directly
             const { data: mentorInfo } = await supabase
               .from("mentors")
-              .select("name, users!clerk_id(name, pic)")
+              .select("id, name, clerk_id")
               .eq("id", team.mentor_id)
               .maybeSingle();
+
+            // then fetch user by clerk_id to get pic
+            let mentorPic = null;
+            if (mentorInfo?.clerk_id) {
+              const { data: userRow } = await supabase
+                .from("users")
+                .select("pic, name")
+                .eq("clerk_id", mentorInfo.clerk_id)
+                .maybeSingle();
+              mentorPic = userRow?.pic || null;
+            }
 
             return {
               ...team,
@@ -86,7 +102,7 @@ export default function WorkspacePage() {
               completed_assignees: completedAssignees,
               preview_members: memberRows || [],
               mentor_name: mentorInfo?.name || "Unknown",
-              mentor_pic: mentorInfo?.users?.pic || null,
+              mentor_pic: mentorPic,
             };
           })
         );
@@ -94,28 +110,34 @@ export default function WorkspacePage() {
         setTeams(enriched);
       };
 
-      const { data: mentorData } = await supabase
+      const { data: mentorData, error: mentorErr } = await supabase
         .from("mentors")
         .select("id")
         .eq("clerk_id", user.id)
         .maybeSingle();
 
-      const { data: studentData } = await supabase
+      if (mentorErr) throw mentorErr;
+
+      const { data: studentData, error: studentErr } = await supabase
         .from("students")
         .select("id, clerk_id, name")
         .eq("clerk_id", user.id)
         .maybeSingle();
+
+      if (studentErr) throw studentErr;
 
       if (studentData) {
         setIsStudentUser(true);
         setIsMentorUser(false);
         setMentorId(null);
 
-        const { data: approvedReqs } = await supabase
+        const { data: approvedReqs, error: approvedErr } = await supabase
           .from("mentorship_requests")
           .select("mentor_id")
           .eq("student_id", studentData.id)
           .eq("status", "approved");
+
+        if (approvedErr) throw approvedErr;
 
         const mentorIds = [...new Set((approvedReqs || []).map((r) => r.mentor_id).filter(Boolean))];
 
@@ -123,11 +145,13 @@ export default function WorkspacePage() {
           setApprovedStudents([]);
           setTeams([]);
         } else {
-          const { data: teamData } = await supabase
+          const { data: teamData, error: teamErr } = await supabase
             .from("mentor_teams")
             .select("*")
             .in("mentor_id", mentorIds)
             .order("created_at", { ascending: false });
+
+          if (teamErr) throw teamErr;
 
           await loadTeams(teamData || []);
         }
@@ -136,13 +160,15 @@ export default function WorkspacePage() {
         setIsStudentUser(false);
         setMentorId(mentorData.id);
 
-        const { data: approvedReqs } = await supabase
+        const { data: approvedReqs, error: approvedErr } = await supabase
           .from("mentorship_requests")
           .select(
             "student_id, students(id, clerk_id, name, email, university, expertise, users!clerk_id(id, name, email, pic))"
           )
           .eq("mentor_id", mentorData.id)
           .eq("status", "approved");
+
+        if (approvedErr) throw approvedErr;
 
         const studentList = (approvedReqs || [])
           .map((r) => {
@@ -164,11 +190,13 @@ export default function WorkspacePage() {
 
         setApprovedStudents(studentList);
 
-        const { data: teamData } = await supabase
+        const { data: teamData, error: teamErr } = await supabase
           .from("mentor_teams")
           .select("*")
           .eq("mentor_id", mentorData.id)
           .order("created_at", { ascending: false });
+
+        if (teamErr) throw teamErr;
 
         await loadTeams(teamData || []);
       } else {
@@ -179,9 +207,15 @@ export default function WorkspacePage() {
       }
 
       setLoading(false);
+    } catch (err) {
+      console.error("Workspace init error:", err);
+      setFetchError(err?.message || String(err));
+      setLoading(false);
     }
+  };
 
-    init();
+  useEffect(() => {
+    loadWorkspace();
   }, [user]);
 
   const handleCreateTeam = async () => {
@@ -281,69 +315,73 @@ export default function WorkspacePage() {
         </div>
         <div className="flex gap-2 items-center flex-wrap">
           {canCreateTeams ? (
-            <Modal>
-              <Button>
-                <Plus className="size-4" /> Create Team
-              </Button>
-              <Modal.Backdrop>
-                <Modal.Container>
-                  <Modal.Dialog>
-                    <Modal.CloseTrigger />
-                    <Modal.Header>
-                      <Modal.Icon className="bg-default text-foreground">
-                        <Plus className="size-5" />
-                      </Modal.Icon>
-                      <Modal.Heading>Create Team</Modal.Heading>
-                    </Modal.Header>
-                    <Modal.Body>
-                      <div className="space-y-3">
-                        <TextField>
-                          <Label>Team Name *</Label>
-                          <Input
-                            placeholder="e.g., Backend Team"
-                            fullWidth
-                            value={newTeam.name}
-                            onChange={(e) => setNewTeam((p) => ({ ...p, name: e.target.value }))}
-                          />
-                        </TextField>
-                        <TextField>
-                          <Label>Description</Label>
-                          <TextArea
-                            placeholder="Team description"
-                            rows={3}
-                            fullWidth
-                            value={newTeam.description}
-                            onChange={(e) => setNewTeam((p) => ({ ...p, description: e.target.value }))}
-                          />
-                        </TextField>
-                        <div>
-                          <Label className="mb-2 block">Add Members (optional)</Label>
-                          <MentorStudentListBox
-                            ariaLabel="Select mentor students"
-                            students={approvedStudents}
-                            selectedKeys={newTeam.members}
-                            onSelectionChange={(keys) =>
-                              setNewTeam((p) => ({ ...p, members: keys }))
-                            }
-                          />
+            <>
+              <Modal>
+                <Button>
+                  <Plus className="size-4" /> Create Team
+                </Button>
+                <Modal.Backdrop>
+                  <Modal.Container>
+                    <Modal.Dialog>
+                      <Modal.CloseTrigger />
+                      <Modal.Header>
+                        <Modal.Icon className="bg-default text-foreground">
+                          <Plus className="size-5" />
+                        </Modal.Icon>
+                        <Modal.Heading>Create Team</Modal.Heading>
+                      </Modal.Header>
+                      <Modal.Body>
+                        <div className="space-y-3">
+                          <TextField>
+                            <Label>Team Name *</Label>
+                            <Input
+                              placeholder="e.g., Backend Team"
+                              fullWidth
+                              value={newTeam.name}
+                              onChange={(e) => setNewTeam((p) => ({ ...p, name: e.target.value }))}
+                            />
+                          </TextField>
+                          <TextField>
+                            <Label>Description</Label>
+                            <TextArea
+                              placeholder="Team description"
+                              rows={3}
+                              fullWidth
+                              value={newTeam.description}
+                              onChange={(e) => setNewTeam((p) => ({ ...p, description: e.target.value }))}
+                            />
+                          </TextField>
+                          <div>
+                            <Label className="mb-2 block">Add Members (optional)</Label>
+                            <MentorStudentListBox
+                              ariaLabel="Select mentor students"
+                              students={approvedStudents}
+                              selectedKeys={newTeam.members}
+                              onSelectionChange={(keys) =>
+                                setNewTeam((p) => ({ ...p, members: keys }))
+                              }
+                            />
+                          </div>
                         </div>
-                      </div>
-                    </Modal.Body>
-                    <Modal.Footer>
-                      <Button slot="close" variant="secondary">Cancel</Button>
-                      <Button
-                        slot="close"
-                        onClick={handleCreateTeam}
-                        isLoading={creating}
-                        isDisabled={!newTeam.name}
-                      >
-                        Create Team
-                      </Button>
-                    </Modal.Footer>
-                  </Modal.Dialog>
-                </Modal.Container>
-              </Modal.Backdrop>
-            </Modal>
+                      </Modal.Body>
+                      <Modal.Footer>
+                        <Button slot="close" variant="secondary">Cancel</Button>
+                        <Button
+                          slot="close"
+                          onClick={handleCreateTeam}
+                          isLoading={creating}
+                          isDisabled={!newTeam.name}
+                        >
+                          Create Team
+                        </Button>
+                      </Modal.Footer>
+                    </Modal.Dialog>
+                  </Modal.Container>
+                </Modal.Backdrop>
+              </Modal>
+
+              <Button variant="secondary" onClick={loadWorkspace}>Refresh</Button>
+            </>
           ) : null}
         </div>
       </div>
@@ -358,6 +396,13 @@ export default function WorkspacePage() {
             </div>
           ))}
         </div>
+      ) : fetchError ? (
+        <Alert color="danger">
+          <Alert.Content>
+            <Alert.Title>Error loading workspace</Alert.Title>
+            <Alert.Description>{fetchError}</Alert.Description>
+          </Alert.Content>
+        </Alert>
       ) : teams.length === 0 ? (
         <Alert color="info">
           {isStudentUser

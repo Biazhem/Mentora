@@ -6,49 +6,65 @@ import { Button, InputGroup, ListBox, Select } from "@heroui/react";
 import { supabase } from "@/lib/supabase";
 import { Search } from "lucide-react";
 import { MentorDrawer } from "@/components/custom/drawer-mentor";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCacheStore } from "@/stores/cache";
 
 export default function MentorsPage() {
   const { user } = useUser();
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [expertiseFilter, setExpertiseFilter] = useState("all");
   const [mentors, setMentors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isMentor, setIsMentor] = useState(false);
 
-  useEffect(() => {
-    async function fetchMentors() {
-      const { data: mentorData, error } = await supabase
-        .from("mentors")
-        .select("*");
+  const cache = useCacheStore();
 
-      if (error || !mentorData) {
-        setLoading(false);
-        return;
-      }
+  // move the fetch logic to component scope so we can call it from refresh
+  const fetchMentors = async () => {
+    const { data: mentorData, error } = await supabase.from("mentors").select("*");
 
-      const userIds = mentorData.map((m) => m.clerk_id);
-      const { data: userData } = await supabase
-        .from("users")
-        .select("clerk_id, name, pic")
-        .in("clerk_id", userIds);
-
-      const userMap = {};
-      (userData || []).forEach((u) => {
-        userMap[u.clerk_id] = u;
-      });
-
-      const enriched = mentorData.map((m) => ({
-        ...m,
-        picture: userMap[m.clerk_id]?.pic || null,
-        displayName: userMap[m.clerk_id]?.name || m.name,
-      }));
-
-      setMentors(enriched);
+    if (error || !mentorData) {
       setLoading(false);
+      return [];
     }
 
+    const userIds = mentorData.map((m) => m.clerk_id);
+    const { data: userData } = await supabase
+      .from("users")
+      .select("clerk_id, name, pic")
+      .in("clerk_id", userIds);
+
+    const userMap = {};
+    (userData || []).forEach((u) => {
+      userMap[u.clerk_id] = u;
+    });
+
+    const enriched = mentorData.map((m) => ({
+      ...m,
+      picture: userMap[m.clerk_id]?.pic || null,
+      displayName: userMap[m.clerk_id]?.name || m.name,
+    }));
+
+    // persist to cache
+    cache.setData("mentors", enriched);
+
+    setMentors(enriched);
+    setLoading(false);
+    return enriched;
+  };
+
+  useEffect(() => {
+    const cached = cache.getData("mentors");
+    if (cached) {
+      setMentors(cached);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     fetchMentors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -119,15 +135,14 @@ export default function MentorsPage() {
               className="w-fit"
             />
           </InputGroup>
-          <Link href="/mentors/workspace">
-            <Button>Workspace</Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Button onPress={() => router.push('/mentors/workspace')}>Workspace</Button>
+            <Button onPress={async () => { setLoading(true); cache.removeData('mentors'); await fetchMentors(); }} variant="secondary">Refresh</Button>
+          </div>
         </div>
         <div className="flex gap-2 flex-wrap">
           {isMentor && (
-            <Link href="/mentors/requests">
-              <Button>Requests</Button>
-            </Link>
+            <Button onPress={() => router.push('/mentors/requests')}>Requests</Button>
           )}
           <Select
             selectedKey={expertiseFilter}

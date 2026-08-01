@@ -9,6 +9,7 @@ import { Button, InputGroup } from "@heroui/react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Card, Chip, Alert } from "@heroui/react";
+import { useCacheStore } from "@/stores/cache";
 
 export default function Meeting() {
   const { user } = useUser();
@@ -20,6 +21,7 @@ export default function Meeting() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [meetingTitle, setMeetingTitle] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     async function checkAdmin() {
@@ -52,9 +54,19 @@ export default function Meeting() {
     checkAdmin();
   }, [user, selectedOrganizationId]);
 
+  const cache = useCacheStore();
+
   useEffect(() => {
     async function fetchMeetings() {
       if (!selectedOrganizationId) {
+        setLoading(false);
+        return;
+      }
+
+      const cacheKey = `meetings_${selectedOrganizationId}`;
+      const cached = cache.getData(cacheKey);
+      if (cached) {
+        setMeetings(cached);
         setLoading(false);
         return;
       }
@@ -68,6 +80,7 @@ export default function Meeting() {
 
       if (data) {
         setMeetings(data);
+        cache.setData(cacheKey, data);
       }
       setLoading(false);
     }
@@ -107,6 +120,8 @@ export default function Meeting() {
           meeting_id: meeting.id,
           user_id: userData.id,
         });
+        setIsModalOpen(false);
+        setMeetingTitle("");
         router.push(`/discussion/meetings/${meeting.id}`);
       }
     } catch (err) {
@@ -115,6 +130,12 @@ export default function Meeting() {
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setMeetingTitle("");
+    setCreateError("");
   };
 
   if (!selectedOrganizationId) {
@@ -127,7 +148,7 @@ export default function Meeting() {
 
   return (
     <div className="container py-10">
-      <div className="mb-8 flex justify-between items-center flex-col md:flex-row *:w-full">
+      <div className="mb-8 flex justify-between items-center flex-col md:flex-row md:w-full">
         <div>
           <h1 className="text-2xl font-semibold">Recent Meetings</h1>
           <p className="text-sm text-muted">
@@ -136,20 +157,10 @@ export default function Meeting() {
         </div>
         <div className="flex gap-2 items-center">
           {isAdmin && (
-            <>
-              <InputGroup>
-                <InputGroup.Input
-                  placeholder="Meeting title"
-                  value={meetingTitle}
-                  onChange={(e) => setMeetingTitle(e.target.value)}
-                  className="w-[200px]"
-                />
-              </InputGroup>
-              <Button onClick={handleCreateMeeting} isLoading={creating}>
-                <Plus className="mr-2" />
-                Create Meeting
-              </Button>
-            </>
+            <Button onPress={() => setIsModalOpen(true)} color="primary">
+              <Plus className="mr-2" size={18} />
+              Create Meeting
+            </Button>
           )}
         </div>
       </div>
@@ -162,6 +173,53 @@ export default function Meeting() {
             <Alert.Description>{createError}</Alert.Description>
           </Alert.Content>
         </Alert>
+      )}
+
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/50" onClick={handleCloseModal} />
+
+          <Card className="z-50 w-full max-w-lg mx-4">
+            <Card.Header>
+              <Card.Title>Create New Meeting</Card.Title>
+            </Card.Header>
+
+            <Card.Content>
+              <InputGroup>
+                <InputGroup.Input
+                  placeholder="Enter meeting name"
+                  value={meetingTitle}
+                  onChange={(e) => setMeetingTitle(e.target.value)}
+                  className="w-full"
+                />
+              </InputGroup>
+
+              {createError && (
+                <Alert status="danger" className="mt-4">
+                  <Alert.Indicator />
+                  <Alert.Content>
+                    <Alert.Title>Could not create meeting</Alert.Title>
+                    <Alert.Description>{createError}</Alert.Description>
+                  </Alert.Content>
+                </Alert>
+              )}
+            </Card.Content>
+
+            <div className="flex justify-end gap-2 p-4">
+              <Button color="tertiary" onClick={handleCloseModal}>
+                Cancel
+              </Button>
+              <Button
+                color="primary"
+                onClick={handleCreateMeeting}
+                isLoading={creating}
+                disabled={!meetingTitle.trim()}
+              >
+                Start Meeting
+              </Button>
+            </div>
+          </Card>
+        </div>
       )}
 
       {loading ? (
