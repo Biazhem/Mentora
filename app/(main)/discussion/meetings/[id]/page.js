@@ -22,8 +22,11 @@ const ICE_SERVERS = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
   ],
 };
+const REMOTE_GAIN = 2.5;
+const SPEAKING_THRESHOLD = 8;
 
 function formatSupabaseError(error) {
   if (!error) return "Unknown error";
@@ -54,21 +57,111 @@ export default function MeetingPage({ params }) {
   const [localStream, setLocalStream] = useState(null);
   const [remoteStreams, setRemoteStreams] = useState({});
   const [speakingIds, setSpeakingIds] = useState(new Set());
+
   const peerConnections = useRef({});
   const socketRef = useRef(null);
   const joinedRef = useRef(false);
   const localStreamRef = useRef(null);
   const recognitionRef = useRef(null);
-  const sttTimeoutRef = useRef(null);
   const sttRunningRef = useRef(false);
-  const audioContextRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const gainNodesRef = useRef({});
   const analyserNodesRef = useRef({});
-  const speakingIntervalsRef = useRef({});
+  const animFrameRefs = useRef({});
   const callInitiatedRef = useRef(false);
+  const audioElementsRef = useRef({});
 
   useEffect(() => {
     localStreamRef.current = localStream;
   }, [localStream]);
+
+  // ── Audio helpers ──────────────────────────────────────────────────────────
+
+  const ensureAudioContext = useCallback(() => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtxRef.current.state === "suspended") {
+      audioCtxRef.current.resume().catch(() => {});
+    }
+    return audioCtxRef.current;
+  }, []);
+
+  const startSpeakingDetection = useCallback((peerSocketId, stream) => {
+    if (!stream || !stream.getAudioTracks().length) return;
+    try {
+      const ctx = ensureAudioContext();
+      const source = ctx.createMediaStreamSource(stream);
+
+      // Analyser for speaking detection
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyserNodesRef.current[peerSocketId] = analyser;
+
+      // Gain node for boosted volume output
+      const gain = ctx.createGain();
+      gain.gain.value = REMOTE_GAIN;
+      source.connect(gain);
+      gainNodesRef.current[peerSocketId] = gain;
+
+      // Connect gain to destination so audio actually plays louder
+      gain.connect(ctx.destination);
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const checkLevel = () => {
+        if (!analyserNodesRef.current[peerSocketId]) return;
+        analyser.getByteFrequencyData(dataArray);
+        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        const isSpeaking = avg > SPEAKING_THRESHOLD;
+        setSpeakingIds((prev) => {
+          const next = new Set(prev);
+          if (isSpeaking) next.add(peerSocketId);
+          else next.delete(peerSocketId);
+          return next;
+        });
+        animFrameRefs.current[peerSocketId] = requestAnimationFrame(checkLevel);
+      };
+      checkLevel();
+    } catch (err) {
+      console.warn("Speaking detection failed for", peerSocketId, err);
+    }
+  }, [ensureAudioContext]);
+
+  const stopSpeakingDetection = useCallback((peerSocketId) => {
+    if (animFrameRefs.current[peerSocketId]) {
+      cancelAnimationFrame(animFrameRefs.current[peerSocketId]);
+      delete animFrameRefs.current[peerSocketId];
+    }
+    if (gainNodesRef.current[peerSocketId]) {
+      try { gainNodesRef.current[peerSocketId].disconnect(); } catch (_) {}
+      delete gainNodesRef.current[peerSocketId];
+    }
+    if (analyserNodesRef.current[peerSocketId]) {
+      try { analyserNodesRef.current[peerSocketId].disconnect(); } catch (_) {}
+      delete analyserNodesRef.current[peerSocketId];
+    }
+    setSpeakingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(peerSocketId);
+      return next;
+    });
+  }, []);
+
+  // ── Audio element management (avoid ref callback crashes) ──────────────────
+
+  // When remoteStreams changes, attach streams to existing audio elements
+  useEffect(() => {
+    Object.entries(remoteStreams).forEach(([peerSocketId, stream]) => {
+      const el = audioElementsRef.current[peerSocketId];
+      if (el && stream && el.srcObject !== stream) {
+        el.srcObject = stream;
+        el.play().catch(() => {});
+      }
+    });
+  }, [remoteStreams]);
+
+  // ── Supabase helpers ──────────────────────────────────────────────────────
 
   const fetchParticipants = useCallback(async () => {
     const { data } = await supabase
@@ -79,10 +172,18 @@ export default function MeetingPage({ params }) {
     if (data) setParticipants(data);
   }, [id]);
 
+  // ── Mic / stream helpers ──────────────────────────────────────────────────
+
   const getLocalStream = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000,
+          channelCount: 1,
+        },
         video: false,
       });
       setLocalStream(stream);
@@ -119,53 +220,7 @@ export default function MeetingPage({ params }) {
     });
   };
 
-  // Speaking detection: monitor remote audio levels via AnalyserNode
-  const startSpeakingDetection = useCallback((peerSocketId, stream) => {
-    try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      const ctx = audioContextRef.current;
-      const source = ctx.createMediaStreamSource(stream);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      source.connect(analyser);
-      analyserNodesRef.current[peerSocketId] = analyser;
-
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      const checkLevel = () => {
-        if (!analyserNodesRef.current[peerSocketId]) return;
-        analyser.getByteFrequencyData(dataArray);
-        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-        const isSpeaking = avg > 15;
-        setSpeakingIds((prev) => {
-          const next = new Set(prev);
-          if (isSpeaking) next.add(peerSocketId);
-          else next.delete(peerSocketId);
-          return next;
-        });
-        speakingIntervalsRef.current[peerSocketId] = requestAnimationFrame(checkLevel);
-      };
-      checkLevel();
-    } catch (err) {
-      console.warn("Speaking detection failed for", peerSocketId, err);
-    }
-  }, []);
-
-  const stopSpeakingDetection = useCallback((peerSocketId) => {
-    if (speakingIntervalsRef.current[peerSocketId]) {
-      cancelAnimationFrame(speakingIntervalsRef.current[peerSocketId]);
-      delete speakingIntervalsRef.current[peerSocketId];
-    }
-    if (analyserNodesRef.current[peerSocketId]) {
-      delete analyserNodesRef.current[peerSocketId];
-    }
-    setSpeakingIds((prev) => {
-      const next = new Set(prev);
-      next.delete(peerSocketId);
-      return next;
-    });
-  }, []);
+  // ── Peer connection ───────────────────────────────────────────────────────
 
   const createPeerConnection = useCallback((peerSocketId) => {
     if (peerConnections.current[peerSocketId]) return peerConnections.current[peerSocketId];
@@ -209,6 +264,8 @@ export default function MeetingPage({ params }) {
     return pc;
   }, [id, startSpeakingDetection, stopSpeakingDetection]);
 
+  // ── Supabase join ─────────────────────────────────────────────────────────
+
   const joinMeeting = async (userData) => {
     if (!userData) return;
     try {
@@ -225,7 +282,8 @@ export default function MeetingPage({ params }) {
     }
   };
 
-  // Init: fetch meeting + user data
+  // ── Init: fetch meeting + user ────────────────────────────────────────────
+
   useEffect(() => {
     let cancelled = false;
 
@@ -282,7 +340,8 @@ export default function MeetingPage({ params }) {
     return () => { cancelled = true; };
   }, [fetchParticipants, id, user]);
 
-  // Supabase realtime for meeting status
+  // ── Supabase realtime ─────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!meeting?.id || accessDenied) return;
 
@@ -299,7 +358,8 @@ export default function MeetingPage({ params }) {
     return () => { supabase.removeChannel(channel); };
   }, [accessDenied, fetchParticipants, id, meeting?.id]);
 
-  // Socket.io for WebRTC signaling
+  // ── Socket.io ─────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!meeting || meeting.status !== "active" || accessDenied || !currentUser) return;
 
@@ -311,8 +371,6 @@ export default function MeetingPage({ params }) {
         meetingId: id,
         user: { id: currentUser.id, name: currentUser.name, pic: currentUser.pic },
       });
-
-      // Get local audio stream on connect
       if (!localStreamRef.current) {
         getLocalStream().catch(err => console.error("Failed to get audio stream:", err));
       }
@@ -324,11 +382,7 @@ export default function MeetingPage({ params }) {
 
     socket.on("participants-update", (socketParticipants) => {
       setParticipants((prev) => {
-        // Separate supabase-only entries (those with user_id but no socketId)
-        const supabaseOnly = prev.filter(
-          (sp) => sp.user_id && !sp.socketId
-        );
-        // Map socket participants into the same shape
+        const supabaseOnly = prev.filter((sp) => sp.user_id && !sp.socketId);
         const fromSocket = socketParticipants.map((sp) => ({
           user_id: sp.id,
           users: { name: sp.name, pic: sp.pic },
@@ -338,7 +392,6 @@ export default function MeetingPage({ params }) {
           joined_at: sp.joined_at || new Date().toISOString(),
           left_at: null,
         }));
-        // Merge: deduplicate by user_id
         const seen = new Set();
         const merged = [];
         for (const p of [...fromSocket, ...supabaseOnly]) {
@@ -392,16 +445,16 @@ export default function MeetingPage({ params }) {
     socket.on("meeting-ended", () => {
       const stream = localStreamRef.current;
       if (stream) stream.getTracks().forEach((t) => t.stop());
-      Object.values(peerConnections.current).forEach((pc) => pc.close());
+      Object.values(peerConnections.current).forEach((pc) => { try { pc.close(); } catch (_) {} });
       peerConnections.current = {};
-      Object.keys(speakingIntervalsRef.current).forEach(stopSpeakingDetection);
+      Object.keys(animFrameRefs.current).forEach(stopSpeakingDetection);
       setRemoteStreams({});
       setSpeakingIds(new Set());
       setMeeting((prev) => prev ? { ...prev, status: "ended" } : prev);
     });
 
     socket.on("transcript-update", (data) => {
-      const { entry, from } = data;
+      const { entry } = data;
       if (entry && entry.name && entry.say) {
         setTranscript((prev) => {
           const isDuplicate = prev.some(
@@ -417,7 +470,7 @@ export default function MeetingPage({ params }) {
       const { socketId, level } = data;
       setSpeakingIds((prev) => {
         const next = new Set(prev);
-        if (level > 15) next.add(`remote-${socketId}`);
+        if (level > SPEAKING_THRESHOLD) next.add(`remote-${socketId}`);
         else next.delete(`remote-${socketId}`);
         return next;
       });
@@ -425,20 +478,25 @@ export default function MeetingPage({ params }) {
 
     return () => {
       socket.emit("leave-meeting", { meetingId: id });
-      Object.values(peerConnections.current).forEach((pc) => pc.close());
+      Object.values(peerConnections.current).forEach((pc) => { try { pc.close(); } catch (_) {} });
       peerConnections.current = {};
-      Object.keys(speakingIntervalsRef.current).forEach(stopSpeakingDetection);
+      Object.keys(animFrameRefs.current).forEach(stopSpeakingDetection);
+      Object.values(gainNodesRef.current).forEach((g) => { try { g.disconnect(); } catch (_) {} });
+      Object.values(analyserNodesRef.current).forEach((a) => { try { a.disconnect(); } catch (_) {} });
+      gainNodesRef.current = {};
+      analyserNodesRef.current = {};
       setRemoteStreams({});
       setSpeakingIds(new Set());
-      if (audioContextRef.current) {
-        audioContextRef.current.close().catch(() => {});
-        audioContextRef.current = null;
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
       }
       socket.disconnect();
     };
   }, [meeting?.id, meeting?.status, accessDenied, currentUser, id, createPeerConnection, stopSpeakingDetection]);
 
-  // Auto-initiate call when participants change and we have local stream
+  // ── Auto-initiate call ────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!localStreamRef.current || !socketRef.current?.connected || !currentUser) return;
     if (callInitiatedRef.current) return;
@@ -450,7 +508,6 @@ export default function MeetingPage({ params }) {
 
     callInitiatedRef.current = true;
 
-    // Small delay to ensure all participants are ready
     const timer = setTimeout(() => {
       for (const p of others) {
         const peerSocketId = p.socketId;
@@ -479,10 +536,14 @@ export default function MeetingPage({ params }) {
     return () => clearTimeout(timer);
   }, [participants, currentUser, id, createPeerConnection]);
 
+  // ── Start call (manual) ───────────────────────────────────────────────────
+
   const startCall = async () => {
     if (!currentUser || !socketRef.current) return;
 
     try {
+      ensureAudioContext();
+
       let stream = localStreamRef.current;
       if (!stream) {
         stream = await getLocalStream();
@@ -512,7 +573,8 @@ export default function MeetingPage({ params }) {
     }
   };
 
-  // STT: speech recognition for local user, broadcasts to all participants
+  // ── STT ───────────────────────────────────────────────────────────────────
+
   const initializeSTT = useCallback(() => {
     if (typeof window === "undefined" || recognitionRef.current) return;
 
@@ -541,10 +603,8 @@ export default function MeetingPage({ params }) {
           timestamp: new Date().toISOString(),
         };
 
-        // Optimistically add to local state
         setTranscript((prev) => [...prev, newEntry]);
 
-        // Broadcast via socket (server handles persistence)
         if (socketRef.current?.connected) {
           socketRef.current.emit("transcript-update", {
             meetingId: id,
@@ -586,8 +646,9 @@ export default function MeetingPage({ params }) {
     };
   }, [meeting?.status, currentUser, localStream, isMuted, initializeSTT]);
 
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
   const handleToggleMic = async () => { await toggleMic(); };
-  const handleToggleVideo = async () => { /* no-op audio-only mode */ };
 
   const handleSaveTitle = async () => {
     if (!newTitle.trim() || newTitle === meeting.title) {
@@ -644,9 +705,9 @@ export default function MeetingPage({ params }) {
       }
       const stream = localStreamRef.current;
       if (stream) stream.getTracks().forEach((t) => t.stop());
-      Object.values(peerConnections.current).forEach((pc) => pc.close());
+      Object.values(peerConnections.current).forEach((pc) => { try { pc.close(); } catch (_) {} });
       peerConnections.current = {};
-      Object.keys(speakingIntervalsRef.current).forEach(stopSpeakingDetection);
+      Object.keys(animFrameRefs.current).forEach(stopSpeakingDetection);
       setRemoteStreams({});
       setSpeakingIds(new Set());
 
@@ -685,14 +746,15 @@ export default function MeetingPage({ params }) {
     }
     const stream = localStreamRef.current;
     if (stream) stream.getTracks().forEach((t) => t.stop());
-    Object.values(peerConnections.current).forEach((pc) => pc.close());
+    Object.values(peerConnections.current).forEach((pc) => { try { pc.close(); } catch (_) {} });
     peerConnections.current = {};
-    Object.keys(speakingIntervalsRef.current).forEach(stopSpeakingDetection);
+    Object.keys(animFrameRefs.current).forEach(stopSpeakingDetection);
     socketRef.current?.emit("leave-meeting", { meetingId: id });
     router.push("/discussion/meetings");
   };
 
-  // --- Loading / Error states ---
+  // ── Loading / Error states ────────────────────────────────────────────────
+
   if (loading) {
     return (
       <div className="py-12 px-4 animate-pulse space-y-4 max-w-3xl mx-auto">
@@ -718,7 +780,8 @@ export default function MeetingPage({ params }) {
 
   if (!meeting) return <p className="p-6 text-center">Meeting not found</p>;
 
-  // --- Ended meeting view ---
+  // ── Ended meeting view ────────────────────────────────────────────────────
+
   if (meeting.status !== "active") {
     const startedAt = meeting.started_at ? new Date(meeting.started_at) : null;
     const endedAt = meeting.ended_at ? new Date(meeting.ended_at) : null;
@@ -825,11 +888,12 @@ export default function MeetingPage({ params }) {
     );
   }
 
-  // --- Active meeting view ---
+  // ── Active meeting view ───────────────────────────────────────────────────
+
   const activeParticipants = participants.filter((p) => !p.left_at);
-  const participantName = (p) => p.users?.name || p.name || "Unknown";
-  const participantPic = (p) => p.users?.pic || p.pic;
-  const participantId = (p) => p.user_id || p.id;
+  const participantName = (p) => p?.users?.name || p?.name || "Unknown";
+  const participantPic = (p) => p?.users?.pic || p?.pic;
+  const participantId = (p) => p?.user_id || p?.id;
 
   return (
     <div className="flex h-full flex-col bg-background-secondary">
@@ -894,9 +958,12 @@ export default function MeetingPage({ params }) {
                 <div className="mb-2 flex h-20 w-full items-center justify-center overflow-hidden rounded-md bg-default-100">
                   <audio
                     ref={(el) => {
-                      if (el && stream) {
-                        el.srcObject = stream;
-                        el.play().catch(() => {});
+                      if (el) {
+                        audioElementsRef.current[peerSocketId] = el;
+                        if (stream && el.srcObject !== stream) {
+                          el.srcObject = stream;
+                          el.play().catch(() => {});
+                        }
                       }
                     }}
                     autoPlay
@@ -904,10 +971,10 @@ export default function MeetingPage({ params }) {
                   />
                   <Avatar size="lg">
                     {participantPic(participant) ? <Avatar.Image src={participantPic(participant)} alt={participantName(participant)} /> : null}
-                    <Avatar.Fallback>{participantName(participant || {}).charAt(0)}</Avatar.Fallback>
+                    <Avatar.Fallback>{participantName(participant).charAt(0)}</Avatar.Fallback>
                   </Avatar>
                 </div>
-                <p className="text-xs font-medium">{participantName(participant || {})}</p>
+                <p className="text-xs font-medium">{participantName(participant)}</p>
                 <p className="text-[10px] text-muted">{isSpeaking ? "Speaking" : "In call"}</p>
               </Card.Content>
             </Card>
