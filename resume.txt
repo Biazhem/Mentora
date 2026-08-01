@@ -1,7 +1,1 @@
-codex resume 019e2cb4-5214-7200-819f-cfd1b4963a4b
-
-
-mimo -s ses_124153b91ffe5LKpxZ1nIpBe6B
-
-// Private
-mimo -s ses_12ab0e785ffe6r3B5Kbz3WZhHJ
+copilot --resume=2f47406d-90ab-4695-ba15-561614d2a343

@@ -61,6 +61,10 @@ export default function MeetingPage({ params }) {
   const recognitionRef = useRef(null);
   const sttTimeoutRef = useRef(null);
   const sttRunningRef = useRef(false);
+  const audioContextRef = useRef(null);
+  const analyserNodesRef = useRef({});
+  const speakingIntervalsRef = useRef({});
+  const callInitiatedRef = useRef(false);
 
   useEffect(() => {
     localStreamRef.current = localStream;
@@ -78,11 +82,10 @@ export default function MeetingPage({ params }) {
   const getLocalStream = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         video: false,
       });
       setLocalStream(stream);
-      console.log("Local audio obtained:", stream.getAudioTracks().length > 0);
       return stream;
     } catch (err) {
       console.error("Error getting local stream:", err);
@@ -94,7 +97,7 @@ export default function MeetingPage({ params }) {
   const toggleMic = async () => {
     const stream = localStreamRef.current;
     if (!stream) {
-      const newStream = await getLocalStream();
+      await getLocalStream();
       setIsMuted(false);
       return;
     }
@@ -106,7 +109,6 @@ export default function MeetingPage({ params }) {
     }
   };
 
-  // Helper: add audio tracks to a peer connection only if not already added
   const addAudioTracksToPC = (pc, stream) => {
     if (!pc || !stream) return;
     stream.getAudioTracks().forEach((track) => {
@@ -117,29 +119,69 @@ export default function MeetingPage({ params }) {
     });
   };
 
+  // Speaking detection: monitor remote audio levels via AnalyserNode
+  const startSpeakingDetection = useCallback((peerSocketId, stream) => {
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const ctx = audioContextRef.current;
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyserNodesRef.current[peerSocketId] = analyser;
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const checkLevel = () => {
+        if (!analyserNodesRef.current[peerSocketId]) return;
+        analyser.getByteFrequencyData(dataArray);
+        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        const isSpeaking = avg > 15;
+        setSpeakingIds((prev) => {
+          const next = new Set(prev);
+          if (isSpeaking) next.add(peerSocketId);
+          else next.delete(peerSocketId);
+          return next;
+        });
+        speakingIntervalsRef.current[peerSocketId] = requestAnimationFrame(checkLevel);
+      };
+      checkLevel();
+    } catch (err) {
+      console.warn("Speaking detection failed for", peerSocketId, err);
+    }
+  }, []);
+
+  const stopSpeakingDetection = useCallback((peerSocketId) => {
+    if (speakingIntervalsRef.current[peerSocketId]) {
+      cancelAnimationFrame(speakingIntervalsRef.current[peerSocketId]);
+      delete speakingIntervalsRef.current[peerSocketId];
+    }
+    if (analyserNodesRef.current[peerSocketId]) {
+      delete analyserNodesRef.current[peerSocketId];
+    }
+    setSpeakingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(peerSocketId);
+      return next;
+    });
+  }, []);
+
   const createPeerConnection = useCallback((peerSocketId) => {
     if (peerConnections.current[peerSocketId]) return peerConnections.current[peerSocketId];
 
     const pc = new RTCPeerConnection(ICE_SERVERS);
     peerConnections.current[peerSocketId] = pc;
 
-    // add local audio tracks safely (avoid duplicate senders)
     const stream = localStreamRef.current;
     if (stream) addAudioTracksToPC(pc, stream);
 
     pc.ontrack = (event) => {
-      console.log("Remote track received from:", peerSocketId, event.track.kind);
-      setRemoteStreams((prev) => {
-        const updated = { ...prev };
-        if (event.streams && event.streams.length > 0) {
-          updated[peerSocketId] = event.streams[0];
-        }
-        return updated;
-      });
-    };
-
-    pc.ondatachannel = (event) => {
-      console.log("Data channel received:", event.channel.label);
+      if (event.streams && event.streams.length > 0) {
+        const remoteStream = event.streams[0];
+        setRemoteStreams((prev) => ({ ...prev, [peerSocketId]: remoteStream }));
+        startSpeakingDetection(peerSocketId, remoteStream);
+      }
     };
 
     pc.onicecandidate = (event) => {
@@ -153,9 +195,9 @@ export default function MeetingPage({ params }) {
     };
 
     pc.onconnectionstatechange = () => {
-      console.log("Connection state change:", peerSocketId, pc.connectionState);
       if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
         delete peerConnections.current[peerSocketId];
+        stopSpeakingDetection(peerSocketId);
         setRemoteStreams((prev) => {
           const next = { ...prev };
           delete next[peerSocketId];
@@ -164,12 +206,8 @@ export default function MeetingPage({ params }) {
       }
     };
 
-    pc.oniceconnectionstatechange = () => {
-      console.log("ICE connection state:", peerSocketId, pc.iceConnectionState);
-    };
-
     return pc;
-  }, [id]);
+  }, [id, startSpeakingDetection, stopSpeakingDetection]);
 
   const joinMeeting = async (userData) => {
     if (!userData) return;
@@ -269,17 +307,14 @@ export default function MeetingPage({ params }) {
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
       socket.emit("join-meeting", {
         meetingId: id,
         user: { id: currentUser.id, name: currentUser.name, pic: currentUser.pic },
       });
-      
+
       // Get local audio stream on connect
       if (!localStreamRef.current) {
-        getLocalStream().catch(err => {
-          console.error("Failed to get initial audio stream:", err);
-        });
+        getLocalStream().catch(err => console.error("Failed to get audio stream:", err));
       }
     });
 
@@ -289,9 +324,11 @@ export default function MeetingPage({ params }) {
 
     socket.on("participants-update", (socketParticipants) => {
       setParticipants((prev) => {
+        // Separate supabase-only entries (those with user_id but no socketId)
         const supabaseOnly = prev.filter(
-          (sp) => !socketParticipants.some((sp2) => sp2.id === sp.user_id)
+          (sp) => sp.user_id && !sp.socketId
         );
+        // Map socket participants into the same shape
         const fromSocket = socketParticipants.map((sp) => ({
           user_id: sp.id,
           users: { name: sp.name, pic: sp.pic },
@@ -301,34 +338,16 @@ export default function MeetingPage({ params }) {
           joined_at: sp.joined_at || new Date().toISOString(),
           left_at: null,
         }));
-        const merged = [...supabaseOnly, ...fromSocket];
-        
-        // Auto-trigger call initiation if we have a local stream and there are new participants
-        if (localStreamRef.current && merged.length > 1) {
-          setTimeout(() => {
-            const others = merged.filter((p) => p.user_id !== currentUser?.id && p.socketId);
-            for (const p of others) {
-              if (!peerConnections.current[p.socketId] && socketRef.current) {
-                try {
-                  const pc = createPeerConnection(p.socketId);
-                  // Safely ensure local audio tracks are attached (no duplicate senders)
-                  if (localStreamRef.current) addAudioTracksToPC(pc, localStreamRef.current);
-                  pc.createOffer().then((offer) => {
-                    pc.setLocalDescription(offer);
-                    socketRef.current?.emit("offer", {
-                      meetingId: id,
-                      offer,
-                      to: p.socketId,
-                    });
-                  }).catch(err => console.error("Error creating offer:", err));
-                } catch (err) {
-                  console.error("Error initiating connection:", err);
-                }
-              }
-            }
-          }, 100);
+        // Merge: deduplicate by user_id
+        const seen = new Set();
+        const merged = [];
+        for (const p of [...fromSocket, ...supabaseOnly]) {
+          const uid = p.user_id || p.id;
+          if (uid && !seen.has(uid)) {
+            seen.add(uid);
+            merged.push(p);
+          }
         }
-        
         return merged;
       });
     });
@@ -336,13 +355,11 @@ export default function MeetingPage({ params }) {
     socket.on("offer", async (data) => {
       if (data.from === socket.id) return;
       try {
-        console.log("Received offer from:", data.from);
         const pc = createPeerConnection(data.from);
         await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         socket.emit("answer", { meetingId: id, answer, to: data.from });
-        console.log("Sent answer to:", data.from);
       } catch (err) {
         console.error("Error handling offer:", err);
       }
@@ -351,11 +368,9 @@ export default function MeetingPage({ params }) {
     socket.on("answer", async (data) => {
       if (data.from === socket.id) return;
       try {
-        console.log("Received answer from:", data.from);
         const pc = peerConnections.current[data.from];
         if (pc) {
           await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-          console.log("Remote description set for:", data.from);
         }
       } catch (err) {
         console.error("Error handling answer:", err);
@@ -379,12 +394,14 @@ export default function MeetingPage({ params }) {
       if (stream) stream.getTracks().forEach((t) => t.stop());
       Object.values(peerConnections.current).forEach((pc) => pc.close());
       peerConnections.current = {};
+      Object.keys(speakingIntervalsRef.current).forEach(stopSpeakingDetection);
       setRemoteStreams({});
+      setSpeakingIds(new Set());
       setMeeting((prev) => prev ? { ...prev, status: "ended" } : prev);
     });
 
     socket.on("transcript-update", (data) => {
-      const { entry } = data;
+      const { entry, from } = data;
       if (entry && entry.name && entry.say) {
         setTranscript((prev) => {
           const isDuplicate = prev.some(
@@ -396,43 +413,98 @@ export default function MeetingPage({ params }) {
       }
     });
 
+    socket.on("audio-level", (data) => {
+      const { socketId, level } = data;
+      setSpeakingIds((prev) => {
+        const next = new Set(prev);
+        if (level > 15) next.add(`remote-${socketId}`);
+        else next.delete(`remote-${socketId}`);
+        return next;
+      });
+    });
+
     return () => {
       socket.emit("leave-meeting", { meetingId: id });
       Object.values(peerConnections.current).forEach((pc) => pc.close());
       peerConnections.current = {};
+      Object.keys(speakingIntervalsRef.current).forEach(stopSpeakingDetection);
       setRemoteStreams({});
+      setSpeakingIds(new Set());
+      if (audioContextRef.current) {
+        audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
+      }
       socket.disconnect();
     };
-  }, [meeting?.id, meeting?.status, accessDenied, currentUser, id, createPeerConnection]);
+  }, [meeting?.id, meeting?.status, accessDenied, currentUser, id, createPeerConnection, stopSpeakingDetection]);
+
+  // Auto-initiate call when participants change and we have local stream
+  useEffect(() => {
+    if (!localStreamRef.current || !socketRef.current?.connected || !currentUser) return;
+    if (callInitiatedRef.current) return;
+
+    const others = participants.filter(
+      (p) => (p.user_id || p.id) !== currentUser.id && p.socketId
+    );
+    if (others.length === 0) return;
+
+    callInitiatedRef.current = true;
+
+    // Small delay to ensure all participants are ready
+    const timer = setTimeout(() => {
+      for (const p of others) {
+        const peerSocketId = p.socketId;
+        if (!peerSocketId || peerConnections.current[peerSocketId]) continue;
+
+        try {
+          const pc = createPeerConnection(peerSocketId);
+          if (localStreamRef.current) addAudioTracksToPC(pc, localStreamRef.current);
+
+          pc.createOffer()
+            .then((offer) => pc.setLocalDescription(offer))
+            .then(() => {
+              socketRef.current?.emit("offer", {
+                meetingId: id,
+                offer: pc.localDescription,
+                to: peerSocketId,
+              });
+            })
+            .catch((err) => console.error("Auto-offer error:", err));
+        } catch (err) {
+          console.error("Error initiating connection:", err);
+        }
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [participants, currentUser, id, createPeerConnection]);
 
   const startCall = async () => {
     if (!currentUser || !socketRef.current) return;
-    
+
     try {
       let stream = localStreamRef.current;
       if (!stream) {
         stream = await getLocalStream();
       }
 
-      // Send offer to each connected participant (audio only)
-      const others = participants.filter((p) => p.user_id !== currentUser.id && p.socketId);
+      const others = participants.filter(
+        (p) => (p.user_id || p.id) !== currentUser.id && p.socketId
+      );
       for (const p of others) {
-        if (!peerConnections.current[p.socketId]) {
-          const pc = createPeerConnection(p.socketId);
-          
-          // Add audio tracks from local stream to peer connection
-          if (stream) {
-            addAudioTracksToPC(pc, stream);
-          }
-          
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          socketRef.current.emit("offer", {
-            meetingId: id,
-            offer,
-            to: p.socketId,
-          });
-        }
+        const peerSocketId = p.socketId;
+        if (!peerSocketId || peerConnections.current[peerSocketId]) continue;
+
+        const pc = createPeerConnection(peerSocketId);
+        if (stream) addAudioTracksToPC(pc, stream);
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socketRef.current.emit("offer", {
+          meetingId: id,
+          offer,
+          to: peerSocketId,
+        });
       }
     } catch (err) {
       console.error("Error starting call:", err);
@@ -440,7 +512,7 @@ export default function MeetingPage({ params }) {
     }
   };
 
-  // STT
+  // STT: speech recognition for local user, broadcasts to all participants
   const initializeSTT = useCallback(() => {
     if (typeof window === "undefined" || recognitionRef.current) return;
 
@@ -466,58 +538,26 @@ export default function MeetingPage({ params }) {
         const newEntry = {
           name: currentUser?.name || "Unknown",
           say: finalTranscript.trim(),
+          timestamp: new Date().toISOString(),
         };
 
-        // Optimistically update local UI and broadcast to meeting via socket
-        setTranscript((prev) => {
-          const updated = [...prev, newEntry];
+        // Optimistically add to local state
+        setTranscript((prev) => [...prev, newEntry]);
 
-          if (socketRef.current?.connected) {
-            socketRef.current.emit("transcript-update", {
-              meetingId: id,
-              entry: newEntry,
-            });
-          }
-
-          // Persist: fetch current server transcript and merge to avoid overwriting other users' entries
-          if (sttTimeoutRef.current) clearTimeout(sttTimeoutRef.current);
-          sttTimeoutRef.current = setTimeout(async () => {
-            try {
-              const { data: existing, error: selErr } = await supabase
-                .from("meetings")
-                .select("transcript")
-                .eq("id", id)
-                .single();
-
-              if (selErr) {
-                // If select fails, still try a safe update with our new entry alone appended on client-side
-                try {
-                  await supabase.from("meetings").upsert({ id, transcript: [newEntry] }, { onConflict: "id" });
-                } catch (err) {
-                  console.error("Fallback save transcript error:", err);
-                }
-                return;
-              }
-
-              const serverTranscript = Array.isArray(existing?.transcript) ? existing.transcript : [];
-
-              // Merge without duplicates (basic check: name + say)
-              const merged = [...serverTranscript];
-              const exists = serverTranscript.some((t) => t.name === newEntry.name && t.say === newEntry.say);
-              if (!exists) merged.push(newEntry);
-
-              await supabase.from("meetings").update({ transcript: merged }).eq("id", id);
-            } catch (err) {
-              console.error("Error saving transcript:", err);
-            }
-          }, 2000);
-
-          return updated;
-        });
+        // Broadcast via socket (server handles persistence)
+        if (socketRef.current?.connected) {
+          socketRef.current.emit("transcript-update", {
+            meetingId: id,
+            entry: newEntry,
+          });
+        }
       }
     };
 
-    recognition.onerror = () => { sttRunningRef.current = false; };
+    recognition.onerror = (event) => {
+      console.warn("STT error:", event.error);
+      sttRunningRef.current = false;
+    };
     recognition.onend = () => { sttRunningRef.current = false; };
     recognitionRef.current = recognition;
   }, [currentUser, id]);
@@ -547,9 +587,7 @@ export default function MeetingPage({ params }) {
   }, [meeting?.status, currentUser, localStream, isMuted, initializeSTT]);
 
   const handleToggleMic = async () => { await toggleMic(); };
-  // Video toggles removed for audio-only. Stub kept for safety.
   const handleToggleVideo = async () => { /* no-op audio-only mode */ };
-
 
   const handleSaveTitle = async () => {
     if (!newTitle.trim() || newTitle === meeting.title) {
@@ -586,7 +624,7 @@ export default function MeetingPage({ params }) {
       setGeneratingSummary(false);
     }
   };
-  
+
   const handleStartCall = async () => {
     try {
       await startCall();
@@ -608,7 +646,9 @@ export default function MeetingPage({ params }) {
       if (stream) stream.getTracks().forEach((t) => t.stop());
       Object.values(peerConnections.current).forEach((pc) => pc.close());
       peerConnections.current = {};
+      Object.keys(speakingIntervalsRef.current).forEach(stopSpeakingDetection);
       setRemoteStreams({});
+      setSpeakingIds(new Set());
 
       socketRef.current?.emit("end-meeting", { meetingId: id });
 
@@ -626,7 +666,6 @@ export default function MeetingPage({ params }) {
     if (!confirm("Delete this meeting? This action cannot be undone.")) return;
     setDeleting(true);
     try {
-      // remove participants (safer) then delete meeting
       await supabase.from("meeting_participants").delete().eq("meeting_id", id);
       const { error } = await supabase.from("meetings").delete().eq("id", id);
       if (error) throw error;
@@ -648,10 +687,12 @@ export default function MeetingPage({ params }) {
     if (stream) stream.getTracks().forEach((t) => t.stop());
     Object.values(peerConnections.current).forEach((pc) => pc.close());
     peerConnections.current = {};
+    Object.keys(speakingIntervalsRef.current).forEach(stopSpeakingDetection);
     socketRef.current?.emit("leave-meeting", { meetingId: id });
     router.push("/discussion/meetings");
   };
 
+  // --- Loading / Error states ---
   if (loading) {
     return (
       <div className="py-12 px-4 animate-pulse space-y-4 max-w-3xl mx-auto">
@@ -664,7 +705,7 @@ export default function MeetingPage({ params }) {
   if (accessDenied) {
     return (
       <div className="container py-10">
-        <Alert color="danger">
+        <Alert status="danger">
           <Alert.Indicator />
           <Alert.Content>
             <Alert.Title>Meeting unavailable</Alert.Title>
@@ -677,6 +718,7 @@ export default function MeetingPage({ params }) {
 
   if (!meeting) return <p className="p-6 text-center">Meeting not found</p>;
 
+  // --- Ended meeting view ---
   if (meeting.status !== "active") {
     const startedAt = meeting.started_at ? new Date(meeting.started_at) : null;
     const endedAt = meeting.ended_at ? new Date(meeting.ended_at) : null;
@@ -708,7 +750,7 @@ export default function MeetingPage({ params }) {
                     onClick={() => { setNewTitle(meeting.title); setEditingTitle(true); }}
                     className="text-xs text-muted hover:text-foreground"
                   >Edit</button>
-                  <Button variant="danger" size="sm" onPress={handleDeleteMeeting} isLoading={deleting} className="ml-2">Delete</Button>
+                  <Button variant="danger" size="sm" onPress={handleDeleteMeeting} isPending={deleting} className="ml-2">Delete</Button>
                 </div>
               )}
             </div>
@@ -746,11 +788,14 @@ export default function MeetingPage({ params }) {
         {transcript.length > 0 ? (
           <Card className="p-6">
             <h2 className="text-lg font-bold mb-3">Transcript</h2>
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-96 overflow-y-auto">
               {transcript.map((entry, idx) => (
                 <div key={idx} className="flex gap-3">
                   <Avatar size="sm"><Avatar.Fallback>{entry.name?.charAt(0) || "?"}</Avatar.Fallback></Avatar>
-                  <div><p className="text-sm font-medium">{entry.name}</p><p className="text-sm text-foreground">{entry.say}</p></div>
+                  <div>
+                    <p className="text-sm font-medium">{entry.name}</p>
+                    <p className="text-sm text-foreground">{entry.say}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -768,7 +813,7 @@ export default function MeetingPage({ params }) {
           ) : transcript.length > 0 ? (
             <div className="flex flex-col gap-2">
               <p className="text-muted text-sm">No summary yet.</p>
-              <Button variant="secondary" onPress={handleGenerateSummary} isLoading={generatingSummary}>
+              <Button variant="secondary" onPress={handleGenerateSummary} isPending={generatingSummary}>
                 Generate Summary
               </Button>
             </div>
@@ -780,6 +825,7 @@ export default function MeetingPage({ params }) {
     );
   }
 
+  // --- Active meeting view ---
   const activeParticipants = participants.filter((p) => !p.left_at);
   const participantName = (p) => p.users?.name || p.name || "Unknown";
   const participantPic = (p) => p.users?.pic || p.pic;
@@ -787,6 +833,7 @@ export default function MeetingPage({ params }) {
 
   return (
     <div className="flex h-full flex-col bg-background-secondary">
+      {/* Top bar */}
       <div className="flex items-center justify-between p-2">
         <Link href="/discussion/meetings" className="flex items-center gap-1 text-sm text-muted hover:text-foreground">
           <ArrowLeft className="size-4" /> Back
@@ -811,7 +858,7 @@ export default function MeetingPage({ params }) {
                   onClick={() => { setNewTitle(meeting.title); setEditingTitle(true); }}
                   className="text-xs text-muted hover:text-foreground"
                 >Edit</button>
-                <Button variant="danger" size="sm" onPress={handleDeleteMeeting} isLoading={deleting} className="ml-2">Delete</Button>
+                <Button variant="danger" size="sm" onPress={handleDeleteMeeting} isPending={deleting} className="ml-2">Delete</Button>
               </div>
             )}
             <Chip color="success">Live</Chip>
@@ -819,78 +866,108 @@ export default function MeetingPage({ params }) {
         )}
       </div>
 
+      {/* Participant avatars row */}
       <div className="flex gap-2 overflow-x-auto p-2">
+        {/* Local user card */}
         {currentUser && (
           <Card className={`min-w-[160px] border-2 ${speakingIds.has(currentUser.id) ? "border-success" : "border-default"} text-center`}>
             <Card.Content className="p-3">
               <div className="mb-2 flex h-20 w-full items-center justify-center overflow-hidden rounded-md bg-default-100">
-                  <Avatar size="lg">
-                    {currentUser.pic ? <Avatar.Image src={currentUser.pic} alt={currentUser.name} /> : null}
-                    <Avatar.Fallback>{currentUser.name?.charAt(0) || "Y"}</Avatar.Fallback>
-                  </Avatar>
-                </div>
-                <p className="text-xs font-medium">{currentUser.name || "You"}</p>
-                <p className="text-[10px] text-muted">{isMuted ? "Muted" : "Mic on"}</p>
-              </Card.Content>
-            </Card>
-          )}
+                <Avatar size="lg">
+                  {currentUser.pic ? <Avatar.Image src={currentUser.pic} alt={currentUser.name} /> : null}
+                  <Avatar.Fallback>{currentUser.name?.charAt(0) || "Y"}</Avatar.Fallback>
+                </Avatar>
+              </div>
+              <p className="text-xs font-medium">{currentUser.name || "You"}</p>
+              <p className="text-[10px] text-muted">{isMuted ? "Muted" : "Mic on"}</p>
+            </Card.Content>
+          </Card>
+        )}
 
+        {/* Remote streams with audio */}
         {Object.entries(remoteStreams).map(([peerSocketId, stream]) => {
           const participant = participants.find((p) => p.socketId === peerSocketId);
+          const isSpeaking = speakingIds.has(peerSocketId) || speakingIds.has(`remote-${peerSocketId}`);
           return (
-            <Card key={peerSocketId} className="min-w-[160px] border-2 border-success text-center">
+            <Card key={peerSocketId} className={`min-w-[160px] border-2 text-center ${isSpeaking ? "border-success" : "border-default"}`}>
               <Card.Content className="p-3">
                 <div className="mb-2 flex h-20 w-full items-center justify-center overflow-hidden rounded-md bg-default-100">
-                  <audio ref={(el) => { if (el) el.srcObject = stream; try { el?.play(); } catch (_) {} }} autoPlay />
+                  <audio
+                    ref={(el) => {
+                      if (el && stream) {
+                        el.srcObject = stream;
+                        el.play().catch(() => {});
+                      }
+                    }}
+                    autoPlay
+                    playsInline
+                  />
+                  <Avatar size="lg">
+                    {participantPic(participant) ? <Avatar.Image src={participantPic(participant)} alt={participantName(participant)} /> : null}
+                    <Avatar.Fallback>{participantName(participant || {}).charAt(0)}</Avatar.Fallback>
+                  </Avatar>
                 </div>
                 <p className="text-xs font-medium">{participantName(participant || {})}</p>
+                <p className="text-[10px] text-muted">{isSpeaking ? "Speaking" : "In call"}</p>
               </Card.Content>
             </Card>
           );
         })}
 
-        {activeParticipants.filter((p) => participantId(p) !== currentUser?.id && p.socketId && !remoteStreams[p.socketId]).map((p, idx) => (
-          <Card key={idx} className={`min-w-[120px] border-2 text-center ${speakingIds.has(participantId(p)) ? "border-success" : "border-default"}`}>
-            <Card.Content className="p-3">
-              <div className="mb-2 flex h-12 w-full items-center justify-center rounded-md bg-default-100">
-                <Avatar size="sm">
-                  {participantPic(p) ? <Avatar.Image src={participantPic(p)} alt={participantName(p)} /> : null}
-                  <Avatar.Fallback>{participantName(p).charAt(0)}</Avatar.Fallback>
-                </Avatar>
-              </div>
-              <p className="text-xs font-medium">{participantName(p)}</p>
-              <p className="text-[10px] text-muted">Connecting...</p>
-            </Card.Content>
-          </Card>
-        ))}
+        {/* Participants waiting to connect */}
+        {activeParticipants
+          .filter((p) => participantId(p) !== currentUser?.id && p.socketId && !remoteStreams[p.socketId])
+          .map((p, idx) => (
+            <Card key={idx} className="min-w-[120px] border-2 border-default text-center">
+              <Card.Content className="p-3">
+                <div className="mb-2 flex h-12 w-full items-center justify-center rounded-md bg-default-100">
+                  <Avatar size="sm">
+                    {participantPic(p) ? <Avatar.Image src={participantPic(p)} alt={participantName(p)} /> : null}
+                    <Avatar.Fallback>{participantName(p).charAt(0)}</Avatar.Fallback>
+                  </Avatar>
+                </div>
+                <p className="text-xs font-medium">{participantName(p)}</p>
+                <p className="text-[10px] text-muted">Connecting...</p>
+              </Card.Content>
+            </Card>
+          ))}
       </div>
 
+      {/* Center content */}
       <div className="flex flex-1 items-center justify-center p-3">
         <div className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-2xl bg-background shadow">
           <Mic size={40} />
           <p className="text-lg font-semibold">{meeting.title}</p>
           <p className="text-sm text-muted">{activeParticipants.length} participant{activeParticipants.length !== 1 ? "s" : ""}</p>
-          {!localStream && <Button onPress={handleStartCall} className="mt-2">Join Call</Button>}
+          {!localStream && <Button onPress={handleStartCall} variant="primary" className="mt-2">Join Call</Button>}
         </div>
       </div>
 
+      {/* Bottom controls */}
       <div className="flex justify-center gap-4 bg-background p-4 shadow">
         <ButtonGroup>
-          <Button isIconOnly variant="outline" size="lg" onClick={handleToggleMic}>
+          <Button isIconOnly variant={isMuted ? "danger" : "outline"} size="lg" onPress={handleToggleMic}>
             {isMuted ? <MicOff /> : <Mic />}
           </Button>
-          <Button variant="outline" size="lg">
+          <Button variant="outline" size="lg" isIconOnly={false}>
             <Users /> {activeParticipants.length}
           </Button>
           {isHost ? (
-            <Button variant="danger" size="lg" onClick={handleEndMeeting} isLoading={ending}>
+            <Button variant="danger" size="lg" onPress={handleEndMeeting} isPending={ending}>
               <PhoneOff /> End Meeting
             </Button>
           ) : (
-            <Button variant="danger" size="lg" onClick={handleLeaveMeeting}>Leave</Button>
+            <Button variant="danger" size="lg" onPress={handleLeaveMeeting}>Leave</Button>
           )}
         </ButtonGroup>
-        {callError && <Alert color="warning" className="mt-2">{callError}</Alert>}
+        {callError && (
+          <Alert status="warning" className="mt-2">
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Description>{callError}</Alert.Description>
+            </Alert.Content>
+          </Alert>
+        )}
       </div>
     </div>
   );
