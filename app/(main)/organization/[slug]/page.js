@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useUser } from "@clerk/nextjs";
 import { Avatar, Button, Chip, Table, Card } from "@heroui/react";
 import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   PencilSimpleLineIcon,
@@ -43,8 +44,10 @@ export default function OrganizationProfile({ params }) {
   const [editLoading, setEditLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [logoFile, setLogoFile] = useState(null);
+  const router = useRouter();
   const [isMember, setIsMember] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [editForm, setEditForm] = useState({
     org_name: "",
     description: "",
@@ -92,6 +95,7 @@ export default function OrganizationProfile({ params }) {
             .single();
 
           if (userData) {
+            setCurrentUserId(userData.id);
             const { data: memberCheck } = await supabase
               .from("organization_members")
               .select("role")
@@ -230,6 +234,65 @@ export default function OrganizationProfile({ params }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  };
+
+  // Membership actions
+  const handleMakeAdmin = async (memberUserId) => {
+    if (!confirm("Make this user an admin?")) return;
+    setEditLoading(true);
+    try {
+      const { error } = await supabase
+        .from("organization_members")
+        .update({ role: "admin" })
+        .eq("organization_id", slug)
+        .eq("user_id", memberUserId);
+      if (error) throw error;
+      setMembers((prev) => prev.map((m) => (m.user_id === memberUserId ? { ...m, role: "admin" } : m)));
+    } catch (err) {
+      console.error("Make admin error:", err);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleRemoveMember = async (memberUserId) => {
+    if (!confirm("Remove this member from the organization?")) return;
+    setEditLoading(true);
+    try {
+      const { error } = await supabase
+        .from("organization_members")
+        .delete()
+        .eq("organization_id", slug)
+        .eq("user_id", memberUserId);
+      if (error) throw error;
+      setMembers((prev) => prev.filter((m) => m.user_id !== memberUserId));
+    } catch (err) {
+      console.error("Remove member error:", err);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleLeaveOrganization = async () => {
+    if (!currentUserId) return;
+    if (!confirm("Leave this organization?")) return;
+    setEditLoading(true);
+    try {
+      const { error } = await supabase
+        .from("organization_members")
+        .delete()
+        .eq("organization_id", slug)
+        .eq("user_id", currentUserId);
+      if (error) throw error;
+      setMembers((prev) => prev.filter((m) => m.user_id !== currentUserId));
+      setIsMember(false);
+      // redirect to organizations list
+      router.push(`/`);
+    } catch (err) {
+      console.error("Leave organization error:", err);
+    } finally {
+      setEditLoading(false);
+    }
   };
 
   if (loading) {
