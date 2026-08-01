@@ -5,7 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import { supabase } from "@/lib/supabase";
 import { useOrgSelectorStore } from "@/stores/org-selector";
 import { useRouter } from "next/navigation";
-import { Button, InputGroup } from "@heroui/react";
+import { Button, InputGroup, Label, TextField } from "@heroui/react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Card, Chip, Alert } from "@heroui/react";
@@ -153,7 +153,7 @@ export default function Meeting() {
   if (!selectedOrganizationId) {
     return (
       <div className="container py-10">
-        <Alert color="warning">Select an organization from the header to view meetings.</Alert>
+        <Alert status="warning">Select an organization from the header to view meetings.</Alert>
       </div>
     );
   }
@@ -169,7 +169,7 @@ export default function Meeting() {
         </div>
         <div className="flex gap-2 items-center">
           {isAdmin && (
-            <Button onPress={() => setIsModalOpen(true)} color="primary">
+            <Button onPress={() => setIsModalOpen(true)} variant="primary">
               <Plus className="mr-2" size={18} />
               Create Meeting
             </Button>
@@ -197,14 +197,17 @@ export default function Meeting() {
             </Card.Header>
 
             <Card.Content>
-              <InputGroup>
-                <InputGroup.Input
-                  placeholder="Enter meeting name"
-                  value={meetingTitle}
-                  onChange={(e) => setMeetingTitle(e.target.value)}
-                  className="w-full"
-                />
-              </InputGroup>
+              <TextField>
+                <Label>Meeting name</Label>
+                <InputGroup>
+                  <InputGroup.Input
+                    placeholder="Enter meeting name"
+                    value={meetingTitle}
+                    onChange={(e) => setMeetingTitle(e.target.value)}
+                    className="w-full"
+                  />
+                </InputGroup>
+              </TextField>
 
               {createError && (
                 <Alert status="danger" className="mt-4">
@@ -218,14 +221,14 @@ export default function Meeting() {
             </Card.Content>
 
             <div className="flex justify-end gap-2 p-4">
-              <Button color="tertiary" onClick={handleCloseModal}>
+              <Button variant="tertiary" onPress={handleCloseModal}>
                 Cancel
               </Button>
               <Button
-                color="primary"
-                onClick={handleCreateMeeting}
-                isLoading={creating}
-                disabled={!meetingTitle.trim()}
+                variant="primary"
+                onPress={handleCreateMeeting}
+                isPending={creating}
+                isDisabled={!meetingTitle.trim()}
               >
                 Start Meeting
               </Button>
