@@ -72,17 +72,29 @@ export default function Meeting() {
       }
 
       setLoading(true);
-      const { data } = await supabase
-        .from("meetings")
-        .select("*, organizations(org_name)")
-        .eq("org_id", selectedOrganizationId)
-        .order("started_at", { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from("meetings")
+          .select("*, organizations(org_name)")
+          .eq("org_id", selectedOrganizationId)
+          .order("started_at", { ascending: false });
 
-      if (data) {
-        setMeetings(data);
-        cache.setData(cacheKey, data);
+        if (error) {
+          console.error("Fetch meetings error:", error);
+          setMeetings([]);
+        } else if (Array.isArray(data) && data.length > 0) {
+          setMeetings(data);
+          cache.setData(cacheKey, data);
+        } else {
+          // No meetings found
+          setMeetings([]);
+        }
+      } catch (err) {
+        console.error("Unexpected error fetching meetings:", err);
+        setMeetings([]);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     fetchMeetings();
