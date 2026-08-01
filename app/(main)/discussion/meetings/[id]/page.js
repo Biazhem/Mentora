@@ -385,9 +385,6 @@ export default function MeetingPage({ params }) {
         meetingId: id,
         user: { id: currentUser.id, name: currentUser.name, pic: currentUser.pic },
       });
-      if (!localStreamRef.current) {
-        getLocalStream().catch(err => console.error("Failed to get audio stream:", err));
-      }
     });
 
     socket.on("connect_error", (error) => {
@@ -501,6 +498,7 @@ export default function MeetingPage({ params }) {
       analyserNodesRef.current = {};
       setRemoteStreams({});
       setSpeakingIds(new Set());
+      if (sttRestartTimerRef.current) clearTimeout(sttRestartTimerRef.current);
       if (audioCtxRef.current) {
         audioCtxRef.current.close().catch(() => {});
         audioCtxRef.current = null;
@@ -568,7 +566,14 @@ export default function MeetingPage({ params }) {
       );
       for (const p of others) {
         const peerSocketId = p.socketId;
-        if (!peerSocketId || peerConnections.current[peerSocketId]) continue;
+        if (!peerSocketId) continue;
+
+        const existingPc = peerConnections.current[peerSocketId];
+        if (existingPc) {
+          // PC already exists (e.g. from receiving an offer) — just add audio tracks
+          if (stream) addAudioTracksToPC(existingPc, stream);
+          continue;
+        }
 
         const pc = createPeerConnection(peerSocketId);
         if (stream) addAudioTracksToPC(pc, stream);
@@ -588,6 +593,8 @@ export default function MeetingPage({ params }) {
   };
 
   // ── STT ───────────────────────────────────────────────────────────────────
+
+  const sttRestartTimerRef = useRef(null);
 
   const initializeSTT = useCallback(() => {
     if (typeof window === "undefined" || recognitionRef.current) return;
@@ -632,17 +639,25 @@ export default function MeetingPage({ params }) {
       console.warn("STT error:", event.error);
       sttRunningRef.current = false;
     };
-    recognition.onend = () => { sttRunningRef.current = false; };
+
+    recognition.onend = () => {
+      sttRunningRef.current = false;
+      // Auto-restart STT if meeting is still active and not muted
+      if (sttRestartTimerRef.current) clearTimeout(sttRestartTimerRef.current);
+      sttRestartTimerRef.current = setTimeout(() => {
+        if (recognitionRef.current && !sttRunningRef.current) {
+          try { recognitionRef.current.start(); } catch (_) {}
+        }
+      }, 500);
+    };
+
     recognitionRef.current = recognition;
   }, [currentUser, id]);
 
   useEffect(() => {
-    if (!meeting || meeting.status !== "active" || !currentUser || !localStream) return;
+    if (!meeting || meeting.status !== "active" || !currentUser) return;
 
-    const audioTracks = localStream.getAudioTracks();
-    const hasAudio = audioTracks.length > 0 && audioTracks[0].enabled;
-
-    if (hasAudio && !isMuted) {
+    if (!isMuted) {
       if (!recognitionRef.current) initializeSTT();
       if (recognitionRef.current && !sttRunningRef.current) {
         try { recognitionRef.current.start(); } catch (_) {}
@@ -654,11 +669,12 @@ export default function MeetingPage({ params }) {
     }
 
     return () => {
+      if (sttRestartTimerRef.current) clearTimeout(sttRestartTimerRef.current);
       if (recognitionRef.current && sttRunningRef.current) {
         try { recognitionRef.current.stop(); sttRunningRef.current = false; } catch (_) {}
       }
     };
-  }, [meeting?.status, currentUser, localStream, isMuted, initializeSTT]);
+  }, [meeting?.status, currentUser, isMuted, initializeSTT]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
