@@ -2,7 +2,6 @@ import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
-import { v4 as uuidv4 } from "uuid";
 import { createClient } from "@supabase/supabase-js";
 
 const app = express();
@@ -23,10 +22,14 @@ const io = new Server(httpServer, {
   pingTimeout: 5000,
 });
 
-const supabase = createClient(
-  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error("Missing SUPABASE_URL or SUPABASE_KEY env vars. Transcript persistence will be disabled.");
+}
+
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 // Store active meetings: meetingId -> Map of socketId -> participant data
 const meetings = new Map();
@@ -45,6 +48,7 @@ function broadcastParticipants(meetingId) {
 }
 
 async function persistTranscript(meetingId, entry) {
+  if (!supabase) return;
   try {
     const { data: existing, error: selErr } = await supabase
       .from("meetings")
@@ -262,6 +266,10 @@ io.on("connection", (socket) => {
       if (!meetingId) return;
       const meeting = meetings.get(meetingId);
       if (meeting) {
+        // Clean up socketToMeeting for all participants in this meeting
+        for (const [sid] of meeting) {
+          socketToMeeting.delete(sid);
+        }
         io.to(`meeting:${meetingId}`).emit("meeting-ended", { meetingId });
         meetings.delete(meetingId);
       }
@@ -274,6 +282,9 @@ io.on("connection", (socket) => {
     try {
       const { meetingId } = data;
       if (!meetingId) return;
+      // Verify this socket is actually in this meeting
+      const storedMeetingId = socketToMeeting.get(socket.id);
+      if (storedMeetingId !== meetingId) return;
       const meeting = meetings.get(meetingId);
       if (meeting) {
         meeting.delete(socket.id);
