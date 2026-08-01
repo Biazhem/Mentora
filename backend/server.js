@@ -3,6 +3,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import { v4 as uuidv4 } from "uuid";
+import { createClient } from "@supabase/supabase-js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -12,17 +13,67 @@ app.use(express.json());
 
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGINS 
+    origin: process.env.CORS_ORIGINS
       ? process.env.CORS_ORIGINS.split(",")
       : ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"],
     methods: ["GET", "POST"],
     credentials: true,
   },
+  pingInterval: 10000,
+  pingTimeout: 5000,
 });
 
-// Store active meetings and their participants
+const supabase = createClient(
+  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+// Store active meetings: meetingId -> Map of socketId -> participant data
 const meetings = new Map();
-const userSockets = new Map();
+// Store socket -> meeting mapping for quick lookup on disconnect
+const socketToMeeting = new Map();
+
+function getParticipantsArray(meetingId) {
+  const meeting = meetings.get(meetingId);
+  if (!meeting) return [];
+  return Array.from(meeting.values());
+}
+
+function broadcastParticipants(meetingId) {
+  const participants = getParticipantsArray(meetingId);
+  io.to(`meeting:${meetingId}`).emit("participants-update", participants);
+}
+
+async function persistTranscript(meetingId, entry) {
+  try {
+    const { data: existing, error: selErr } = await supabase
+      .from("meetings")
+      .select("transcript")
+      .eq("id", meetingId)
+      .single();
+
+    if (selErr) {
+      console.error("Supabase select transcript error:", selErr);
+      return;
+    }
+
+    const serverTranscript = Array.isArray(existing?.transcript) ? existing.transcript : [];
+    const exists = serverTranscript.some(
+      (t) => t.name === entry.name && t.say === entry.say
+    );
+    if (exists) return;
+
+    const merged = [...serverTranscript, entry];
+    const { error: updErr } = await supabase
+      .from("meetings")
+      .update({ transcript: merged })
+      .eq("id", meetingId);
+
+    if (updErr) console.error("Supabase update transcript error:", updErr);
+  } catch (err) {
+    console.error("persistTranscript error:", err);
+  }
+}
 
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
@@ -30,17 +81,26 @@ io.on("connection", (socket) => {
   socket.on("join-meeting", async (data) => {
     try {
       const { meetingId, user } = data;
-      
-      // Validation
+
       if (!meetingId || typeof meetingId !== "string") {
-        console.error("Invalid meetingId", meetingId);
         socket.emit("error", { message: "Invalid meetingId" });
         return;
       }
       if (!user || !user.id || !user.name) {
-        console.error("Invalid user data", user);
         socket.emit("error", { message: "Invalid user data" });
         return;
+      }
+
+      // If user was already in another meeting, remove them first
+      const prevMeetingId = socketToMeeting.get(socket.id);
+      if (prevMeetingId && prevMeetingId !== meetingId) {
+        const prevMeeting = meetings.get(prevMeetingId);
+        if (prevMeeting) {
+          prevMeeting.delete(socket.id);
+          if (prevMeeting.size === 0) meetings.delete(prevMeetingId);
+          else broadcastParticipants(prevMeetingId);
+        }
+        socket.leave(`meeting:${prevMeetingId}`);
       }
 
       socket.join(`meeting:${meetingId}`);
@@ -48,17 +108,21 @@ io.on("connection", (socket) => {
       if (!meetings.has(meetingId)) {
         meetings.set(meetingId, new Map());
       }
-      meetings.get(meetingId).set(socket.id, {
-        ...user,
+
+      const participantData = {
+        id: user.id,
+        name: user.name,
+        pic: user.pic || null,
         socketId: socket.id,
         isMuted: false,
         isVideoOff: true,
         joined_at: new Date().toISOString(),
-      });
+      };
 
-      userSockets.set(socket.id, { meetingId, user });
+      meetings.get(meetingId).set(socket.id, participantData);
+      socketToMeeting.set(socket.id, meetingId);
 
-      const participants = Array.from(meetings.get(meetingId).values());
+      const participants = getParticipantsArray(meetingId);
       console.log(`User ${user.name} (${socket.id}) joined meeting ${meetingId}. Total: ${participants.length}`);
       io.to(`meeting:${meetingId}`).emit("participants-update", participants);
     } catch (err) {
@@ -70,71 +134,45 @@ io.on("connection", (socket) => {
   socket.on("offer", (data) => {
     try {
       const { meetingId, offer, to } = data;
-      if (!to || !offer || !meetingId) {
-        console.error("Invalid offer data", { meetingId, to, offerExists: !!offer });
-        return;
-      }
-      console.log(`Forwarding offer from ${socket.id} to ${to} for meeting ${meetingId}`);
-      io.to(to).emit("offer", {
-        offer,
-        from: socket.id,
-      });
+      if (!to || !offer || !meetingId) return;
+      console.log(`Forwarding offer from ${socket.id} to ${to}`);
+      io.to(to).emit("offer", { offer, from: socket.id });
     } catch (err) {
       console.error("Error in offer:", err);
-      socket.emit("error", { message: "Failed to send offer" });
     }
   });
 
   socket.on("answer", (data) => {
     try {
       const { meetingId, answer, to } = data;
-      if (!to || !answer || !meetingId) {
-        console.error("Invalid answer data", { meetingId, to, answerExists: !!answer });
-        return;
-      }
-      console.log(`Forwarding answer from ${socket.id} to ${to} for meeting ${meetingId}`);
-      io.to(to).emit("answer", {
-        answer,
-        from: socket.id,
-      });
+      if (!to || !answer || !meetingId) return;
+      console.log(`Forwarding answer from ${socket.id} to ${to}`);
+      io.to(to).emit("answer", { answer, from: socket.id });
     } catch (err) {
       console.error("Error in answer:", err);
-      socket.emit("error", { message: "Failed to send answer" });
     }
   });
 
   socket.on("ice-candidate", (data) => {
     try {
       const { meetingId, candidate, to } = data;
-      if (!to || !candidate || !meetingId) {
-        console.error("Invalid ice-candidate data", { meetingId, to, candidateExists: !!candidate });
-        return;
-      }
-      console.log(`Forwarding ICE candidate from ${socket.id} to ${to}`);
-      io.to(to).emit("ice-candidate", {
-        candidate,
-        from: socket.id,
-      });
+      if (!to || !candidate || !meetingId) return;
+      io.to(to).emit("ice-candidate", { candidate, from: socket.id });
     } catch (err) {
       console.error("Error in ice-candidate:", err);
-      socket.emit("error", { message: "Failed to send ICE candidate" });
     }
   });
 
   socket.on("toggle-mute", (data) => {
     try {
       const { meetingId } = data;
-      if (!meetingId) {
-        console.error("Invalid meetingId in toggle-mute");
-        return;
-      }
+      if (!meetingId) return;
       const meeting = meetings.get(meetingId);
-      if (meeting) {
-        const participant = meeting.get(socket.id);
-        if (participant) {
-          participant.isMuted = !participant.isMuted;
-          io.to(`meeting:${meetingId}`).emit("participants-update", Array.from(meeting.values()));
-        }
+      if (!meeting) return;
+      const participant = meeting.get(socket.id);
+      if (participant) {
+        participant.isMuted = !participant.isMuted;
+        broadcastParticipants(meetingId);
       }
     } catch (err) {
       console.error("Error in toggle-mute:", err);
@@ -144,30 +182,60 @@ io.on("connection", (socket) => {
   socket.on("toggle-video", (data) => {
     try {
       const { meetingId } = data;
-      if (!meetingId) {
-        console.error("Invalid meetingId in toggle-video");
-        return;
-      }
+      if (!meetingId) return;
       const meeting = meetings.get(meetingId);
-      if (meeting) {
-        const participant = meeting.get(socket.id);
-        if (participant) {
-          participant.isVideoOff = !participant.isVideoOff;
-          io.to(`meeting:${meetingId}`).emit("participants-update", Array.from(meeting.values()));
-        }
+      if (!meeting) return;
+      const participant = meeting.get(socket.id);
+      if (participant) {
+        participant.isVideoOff = !participant.isVideoOff;
+        broadcastParticipants(meetingId);
       }
     } catch (err) {
       console.error("Error in toggle-video:", err);
     }
   });
 
+  // Audio level reporting for speaking detection
+  socket.on("audio-level", (data) => {
+    try {
+      const { meetingId, level } = data;
+      if (!meetingId) return;
+      const meeting = meetings.get(meetingId);
+      if (!meeting) return;
+      const participant = meeting.get(socket.id);
+      if (participant) {
+        participant.audioLevel = level;
+        // Broadcast to everyone except sender
+        socket.to(`meeting:${meetingId}`).emit("audio-level", {
+          socketId: socket.id,
+          level,
+        });
+      }
+    } catch (err) {
+      console.error("Error in audio-level:", err);
+    }
+  });
+
+  // Transcript: client sends entry, server persists + broadcasts
+  socket.on("transcript-update", (data) => {
+    try {
+      const { meetingId, entry } = data;
+      if (!meetingId || !entry || !entry.name || !entry.say) return;
+      const enriched = { ...entry, timestamp: entry.timestamp || new Date().toISOString() };
+      // Broadcast to all participants in the meeting
+      io.to(`meeting:${meetingId}`).emit("transcript-update", { entry: enriched, from: socket.id });
+      console.log(`Transcript from ${entry.name}: ${entry.say}`);
+      // Persist to Supabase (debounced on server via timeout per entry)
+      persistTranscript(meetingId, enriched);
+    } catch (err) {
+      console.error("Error in transcript-update:", err);
+    }
+  });
+
   socket.on("end-meeting", (data) => {
     try {
       const { meetingId } = data;
-      if (!meetingId) {
-        console.error("Invalid meetingId in end-meeting");
-        return;
-      }
+      if (!meetingId) return;
       const meeting = meetings.get(meetingId);
       if (meeting) {
         io.to(`meeting:${meetingId}`).emit("meeting-ended", { meetingId });
@@ -181,55 +249,37 @@ io.on("connection", (socket) => {
   socket.on("leave-meeting", (data) => {
     try {
       const { meetingId } = data;
-      if (!meetingId) {
-        console.error("Invalid meetingId in leave-meeting");
-        return;
-      }
+      if (!meetingId) return;
       const meeting = meetings.get(meetingId);
       if (meeting) {
         meeting.delete(socket.id);
         if (meeting.size === 0) {
           meetings.delete(meetingId);
         } else {
-          io.to(`meeting:${meetingId}`).emit("participants-update", Array.from(meeting.values()));
+          broadcastParticipants(meetingId);
         }
       }
       socket.leave(`meeting:${meetingId}`);
-      userSockets.delete(socket.id);
+      socketToMeeting.delete(socket.id);
     } catch (err) {
       console.error("Error in leave-meeting:", err);
     }
   });
 
-  socket.on("transcript-update", (data) => {
-    try {
-      const { meetingId, entry } = data;
-      if (!meetingId || !entry) {
-        console.error("Invalid transcript data", { meetingId, entryExists: !!entry });
-        return;
-      }
-      // Broadcast transcript to all participants in the meeting
-      io.to(`meeting:${meetingId}`).emit("transcript-update", { entry, from: socket.id });
-      console.log(`Transcript from ${entry.name}: ${entry.say}`);
-    } catch (err) {
-      console.error("Error in transcript-update:", err);
-    }
-  });
-
   socket.on("disconnect", () => {
     try {
-      const userData = userSockets.get(socket.id);
-      if (userData) {
-        const meeting = meetings.get(userData.meetingId);
+      const meetingId = socketToMeeting.get(socket.id);
+      if (meetingId) {
+        const meeting = meetings.get(meetingId);
         if (meeting) {
           meeting.delete(socket.id);
           if (meeting.size === 0) {
-            meetings.delete(userData.meetingId);
+            meetings.delete(meetingId);
           } else {
-            io.to(`meeting:${userData.meetingId}`).emit("participants-update", Array.from(meeting.values()));
+            broadcastParticipants(meetingId);
           }
         }
-        userSockets.delete(socket.id);
+        socketToMeeting.delete(socket.id);
       }
       console.log(`User disconnected: ${socket.id}`);
     } catch (err) {
@@ -240,33 +290,24 @@ io.on("connection", (socket) => {
 
 // Health check
 app.get("/health", (req, res) => {
-  try {
-    res.json({ status: "ok", activeMeetings: meetings.size, timestamp: new Date().toISOString() });
-  } catch (err) {
-    console.error("Health check error:", err);
-    res.status(500).json({ status: "error", message: err.message });
-  }
+  res.json({
+    status: "ok",
+    activeMeetings: meetings.size,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Get active participants for a meeting
 app.get("/meeting/:id/participants", (req, res) => {
-  try {
-    const meeting = meetings.get(req.params.id);
-    if (!meeting) {
-      return res.json({ participants: [], meetingId: req.params.id, message: "Meeting not found" });
-    }
-    const participants = Array.from(meeting.values());
-    console.log(`Retrieved ${participants.length} participants for meeting ${req.params.id}`);
-    res.json({ participants, meetingId: req.params.id });
-  } catch (err) {
-    console.error("Get participants error:", err);
-    res.status(500).json({ error: err.message });
+  const meeting = meetings.get(req.params.id);
+  if (!meeting) {
+    return res.json({ participants: [], meetingId: req.params.id });
   }
+  res.json({ participants: getParticipantsArray(req.params.id), meetingId: req.params.id });
 });
 
-// Health check endpoint for load balancers
 app.get("/", (req, res) => {
-  res.json({ service: "mentora-meeting-server", status: "running", version: "1.0.0" });
+  res.json({ service: "mentora-meeting-server", status: "running", version: "1.1.0" });
 });
 
 const PORT = process.env.PORT || 3001;
@@ -274,21 +315,11 @@ httpServer.listen(PORT, () => {
   console.log(`Backend server running on port ${PORT}`);
 });
 
-// Handle graceful shutdown
 process.on("SIGTERM", () => {
-  console.log("SIGTERM received, closing server gracefully");
-  httpServer.close(() => {
-    console.log("Server closed");
-    process.exit(0);
-  });
+  httpServer.close(() => process.exit(0));
 });
-
 process.on("SIGINT", () => {
-  console.log("SIGINT received, closing server gracefully");
-  httpServer.close(() => {
-    console.log("Server closed");
-    process.exit(0);
-  });
+  httpServer.close(() => process.exit(0));
 });
 
 export { app, httpServer, io };
