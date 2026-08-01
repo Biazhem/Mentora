@@ -115,7 +115,7 @@ io.on("connection", (socket) => {
         pic: user.pic || null,
         socketId: socket.id,
         isMuted: false,
-        isVideoOff: true,
+        connected: false,
         joined_at: new Date().toISOString(),
       };
 
@@ -179,19 +179,43 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("toggle-video", (data) => {
+  // Client reports that a peer connection is established
+  socket.on("peer-connected", (data) => {
     try {
-      const { meetingId } = data;
+      const { meetingId, peerSocketId } = data;
       if (!meetingId) return;
       const meeting = meetings.get(meetingId);
       if (!meeting) return;
-      const participant = meeting.get(socket.id);
-      if (participant) {
-        participant.isVideoOff = !participant.isVideoOff;
-        broadcastParticipants(meetingId);
+      // Mark the remote peer as connected on behalf of the sender
+      const peer = meeting.get(peerSocketId);
+      if (peer) {
+        peer.connected = true;
       }
+      // Also mark sender as connected
+      const sender = meeting.get(socket.id);
+      if (sender) {
+        sender.connected = true;
+      }
+      broadcastParticipants(meetingId);
     } catch (err) {
-      console.error("Error in toggle-video:", err);
+      console.error("Error in peer-connected:", err);
+    }
+  });
+
+  // Client reports that a peer connection was lost
+  socket.on("peer-disconnected", (data) => {
+    try {
+      const { meetingId, peerSocketId } = data;
+      if (!meetingId) return;
+      const meeting = meetings.get(meetingId);
+      if (!meeting) return;
+      const peer = meeting.get(peerSocketId);
+      if (peer) {
+        peer.connected = false;
+      }
+      broadcastParticipants(meetingId);
+    } catch (err) {
+      console.error("Error in peer-disconnected:", err);
     }
   });
 

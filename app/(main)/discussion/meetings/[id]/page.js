@@ -236,6 +236,11 @@ export default function MeetingPage({ params }) {
         const remoteStream = event.streams[0];
         setRemoteStreams((prev) => ({ ...prev, [peerSocketId]: remoteStream }));
         startSpeakingDetection(peerSocketId, remoteStream);
+        // Report connected status to server
+        socketRef.current?.emit("peer-connected", {
+          meetingId: id,
+          peerSocketId,
+        });
       }
     };
 
@@ -250,7 +255,16 @@ export default function MeetingPage({ params }) {
     };
 
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+      if (pc.connectionState === "connected") {
+        socketRef.current?.emit("peer-connected", {
+          meetingId: id,
+          peerSocketId,
+        });
+      } else if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+        socketRef.current?.emit("peer-disconnected", {
+          meetingId: id,
+          peerSocketId,
+        });
         delete peerConnections.current[peerSocketId];
         stopSpeakingDetection(peerSocketId);
         setRemoteStreams((prev) => {
@@ -388,7 +402,7 @@ export default function MeetingPage({ params }) {
           users: { name: sp.name, pic: sp.pic },
           socketId: sp.socketId,
           isMuted: sp.isMuted,
-          isVideoOff: sp.isVideoOff,
+          connected: sp.connected,
           joined_at: sp.joined_at || new Date().toISOString(),
           left_at: null,
         }));
@@ -983,7 +997,7 @@ export default function MeetingPage({ params }) {
 
         {/* Participants waiting to connect */}
         {activeParticipants
-          .filter((p) => participantId(p) !== currentUser?.id && p.socketId && !remoteStreams[p.socketId])
+          .filter((p) => participantId(p) !== currentUser?.id && p.socketId && p.connected === false)
           .map((p, idx) => (
             <Card key={idx} className="min-w-[120px] border-2 border-default text-center">
               <Card.Content className="p-3">
