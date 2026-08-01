@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useUser } from "@clerk/nextjs";
 import { Avatar, Button, Chip, Table, Card } from "@heroui/react";
 import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   PencilSimpleLineIcon,
@@ -43,8 +44,10 @@ export default function OrganizationProfile({ params }) {
   const [editLoading, setEditLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [logoFile, setLogoFile] = useState(null);
+  const router = useRouter();
   const [isMember, setIsMember] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [editForm, setEditForm] = useState({
     org_name: "",
     description: "",
@@ -92,6 +95,7 @@ export default function OrganizationProfile({ params }) {
             .single();
 
           if (userData) {
+            setCurrentUserId(userData.id);
             const { data: memberCheck } = await supabase
               .from("organization_members")
               .select("role")
