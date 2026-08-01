@@ -103,7 +103,7 @@ export default function MainHeader({
     const isUuid = /^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[0-9a-fA-F]{32})$/.test(segment.replace(/\s+/g, ""));
 
     const label = isUuid
-      ? "id"
+      ? "---"
       : segment
           .split("-")
           .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
