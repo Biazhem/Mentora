@@ -528,8 +528,19 @@ export default function MeetingPage({ params }) {
 
   const sttRestartTimerRef = useRef(null);
   const sttLastEndRef = useRef(0);
+  const meetingIdRef = useRef(id);
   const currentUserRef = useRef(currentUser);
+  useEffect(() => { meetingIdRef.current = id; }, [id]);
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
+
+  const addTranscriptEntry = useCallback((entry) => {
+    if (!entry?.name || !entry?.say) return;
+    setTranscript((prev) => {
+      const isDuplicate = prev.some((t) => t.name === entry.name && t.say === entry.say);
+      if (isDuplicate) return prev;
+      return [...prev, entry];
+    });
+  }, []);
 
   const initializeSTT = useCallback(() => {
     if (typeof window === "undefined" || recognitionRef.current) return;
@@ -550,22 +561,27 @@ export default function MeetingPage({ params }) {
     recognition.onresult = (event) => {
       const lastIndex = event.results.length - 1;
       const result = event.results[lastIndex];
-      if (result.isFinal) {
-        const text = result[0].transcript.trim();
-        if (text && socketRef.current?.connected) {
-          const name = currentUserRef.current?.name || "Unknown";
-          socketRef.current.emit("transcript-update", {
-            meetingId: id,
-            entry: { name, say: text, timestamp: new Date().toISOString() },
-          });
-        }
+      if (!result.isFinal) return;
+
+      const text = result[0].transcript.trim();
+      if (!text) return;
+
+      const userName = currentUserRef.current?.name || "Unknown";
+      const entry = { name: userName, say: text, timestamp: new Date().toISOString() };
+
+      // 1) Add to local transcript immediately (shows in UI for this user)
+      addTranscriptEntry(entry);
+
+      // 2) Send to server (stores in memory + broadcasts to other users)
+      const mid = meetingIdRef.current;
+      if (socketRef.current?.connected && mid) {
+        socketRef.current.emit("transcript-update", { meetingId: mid, entry });
       }
     };
 
     recognition.onerror = (e) => {
       console.warn("STT Error:", e.error);
       sttRunningRef.current = false;
-      // Don't restart on fatal or common mobile errors
       if (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "network") {
         sttLastEndRef.current = Infinity;
       }
@@ -574,7 +590,6 @@ export default function MeetingPage({ params }) {
     recognition.onend = () => {
       sttRunningRef.current = false;
       sttLastEndRef.current = Date.now();
-      // Debounce restart — 2s prevents mic open/close loop on mobile
       if (sttRestartTimerRef.current) clearTimeout(sttRestartTimerRef.current);
       sttRestartTimerRef.current = setTimeout(() => {
         if (recognitionRef.current && !sttRunningRef.current) {
@@ -584,7 +599,7 @@ export default function MeetingPage({ params }) {
     };
 
     recognitionRef.current = recognition;
-  }, [id]);
+  }, [addTranscriptEntry]);
 
   useEffect(() => {
     if (!meeting || meeting.status !== "active" || !currentUser) return;
