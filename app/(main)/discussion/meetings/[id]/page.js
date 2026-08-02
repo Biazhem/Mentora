@@ -526,62 +526,86 @@ export default function MeetingPage({ params }) {
 
   // ── Speech-To-Text (STT) Setup ──────────────────────────────────────────
 
-  useEffect(() => {
-    if (!meeting || meeting.status !== "active" || !currentUser) return;
+  const sttRestartTimerRef = useRef(null);
+  const sttLastEndRef = useRef(0);
+  const currentUserRef = useRef(currentUser);
+  useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
+
+  const initializeSTT = useCallback(() => {
+    if (typeof window === "undefined" || recognitionRef.current) return;
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      console.warn("SpeechRecognition API not supported in this browser.");
-      return;
-    }
+    if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = false;
     recognition.lang = "en-US";
 
+    recognition.onstart = () => {
+      sttRunningRef.current = true;
+      sttLastEndRef.current = 0;
+    };
+
     recognition.onresult = (event) => {
       const lastIndex = event.results.length - 1;
       const result = event.results[lastIndex];
       if (result.isFinal) {
         const text = result[0].transcript.trim();
-        if (text && socketRef.current) {
-          const entry = {
-            name: currentUser.name,
-            say: text,
-            timestamp: new Date().toISOString(),
-          };
-          socketRef.current.emit("transcript-update", { meetingId: id, entry });
+        if (text && socketRef.current?.connected) {
+          const name = currentUserRef.current?.name || "Unknown";
+          socketRef.current.emit("transcript-update", {
+            meetingId: id,
+            entry: { name, say: text, timestamp: new Date().toISOString() },
+          });
         }
       }
     };
 
     recognition.onerror = (e) => {
-      if (e.error !== "no-speech") console.warn("STT Error:", e.error);
-    };
-
-    recognition.onend = () => {
-      if (sttRunningRef.current) {
-        try { recognition.start(); } catch (_) {}
+      console.warn("STT Error:", e.error);
+      sttRunningRef.current = false;
+      // Don't restart on fatal or common mobile errors
+      if (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "network") {
+        sttLastEndRef.current = Infinity;
       }
     };
 
-    recognitionRef.current = recognition;
-    sttRunningRef.current = true;
+    recognition.onend = () => {
+      sttRunningRef.current = false;
+      sttLastEndRef.current = Date.now();
+      // Debounce restart — 2s prevents mic open/close loop on mobile
+      if (sttRestartTimerRef.current) clearTimeout(sttRestartTimerRef.current);
+      sttRestartTimerRef.current = setTimeout(() => {
+        if (recognitionRef.current && !sttRunningRef.current) {
+          try { recognitionRef.current.start(); } catch (_) {}
+        }
+      }, 2000);
+    };
 
-    try {
-      recognition.start();
-    } catch (err) {
-      console.warn("STT start error:", err);
+    recognitionRef.current = recognition;
+  }, [id]);
+
+  useEffect(() => {
+    if (!meeting || meeting.status !== "active" || !currentUser) return;
+
+    if (!recognitionRef.current) initializeSTT();
+
+    if (recognitionRef.current && !sttRunningRef.current) {
+      const elapsed = sttLastEndRef.current ? Date.now() - sttLastEndRef.current : Infinity;
+      if (elapsed >= 2000) {
+        try { recognitionRef.current.start(); } catch (_) {}
+      }
     }
 
     return () => {
+      if (sttRestartTimerRef.current) clearTimeout(sttRestartTimerRef.current);
       sttRunningRef.current = false;
       if (recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch (_) {}
       }
     };
-  }, [meeting, currentUser, id]);
+  }, [meeting?.status, currentUser, id, initializeSTT]);
 
   const endMeeting = async () => {
     if (!isHost && !isAdmin) return;
