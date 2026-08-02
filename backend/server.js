@@ -35,6 +35,8 @@ const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabase
 const meetings = new Map();
 // Store socket -> meeting mapping for quick lookup on disconnect
 const socketToMeeting = new Map();
+// Store transcript entries in memory per meeting: meetingId -> Array of entries
+const meetingTranscripts = new Map();
 
 function getParticipantsArray(meetingId) {
   const meeting = meetings.get(meetingId);
@@ -47,35 +49,22 @@ function broadcastParticipants(meetingId) {
   io.to(`meeting:${meetingId}`).emit("participants-update", participants);
 }
 
-async function persistTranscript(meetingId, entry) {
+async function persistMeetingTranscript(meetingId) {
   if (!supabase) return;
+  const transcript = meetingTranscripts.get(meetingId);
+  if (!transcript || transcript.length === 0) return;
   try {
-    const { data: existing, error: selErr } = await supabase
+    const { error } = await supabase
       .from("meetings")
-      .select("transcript")
-      .eq("id", meetingId)
-      .single();
-
-    if (selErr) {
-      console.error("Supabase select transcript error:", selErr);
-      return;
-    }
-
-    const serverTranscript = Array.isArray(existing?.transcript) ? existing.transcript : [];
-    const exists = serverTranscript.some(
-      (t) => t.name === entry.name && t.say === entry.say
-    );
-    if (exists) return;
-
-    const merged = [...serverTranscript, entry];
-    const { error: updErr } = await supabase
-      .from("meetings")
-      .update({ transcript: merged })
+      .update({ transcript })
       .eq("id", meetingId);
-
-    if (updErr) console.error("Supabase update transcript error:", updErr);
+    if (error) {
+      console.error("Supabase persist transcript error:", error);
+    } else {
+      console.log(`Persisted ${transcript.length} transcript entries for meeting ${meetingId}`);
+    }
   } catch (err) {
-    console.error("persistTranscript error:", err);
+    console.error("persistMeetingTranscript error:", err);
   }
 }
 
@@ -244,17 +233,27 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Transcript: client sends entry, server persists + broadcasts
+  // Transcript: client sends entry, server stores in memory + broadcasts
   socket.on("transcript-update", (data) => {
     try {
       const { meetingId, entry } = data;
       if (!meetingId || !entry || !entry.name || !entry.say) return;
       const enriched = { ...entry, timestamp: entry.timestamp || new Date().toISOString() };
-      // Broadcast to all participants in the meeting
+
+      // Store in memory
+      if (!meetingTranscripts.has(meetingId)) {
+        meetingTranscripts.set(meetingId, []);
+      }
+      const transcript = meetingTranscripts.get(meetingId);
+      // Deduplicate
+      const exists = transcript.some((t) => t.name === enriched.name && t.say === enriched.say);
+      if (!exists) {
+        transcript.push(enriched);
+      }
+
+      // Broadcast to all participants
       io.to(`meeting:${meetingId}`).emit("transcript-update", { entry: enriched, from: socket.id });
       console.log(`Transcript from ${entry.name}: ${entry.say}`);
-      // Persist to Supabase (debounced on server via timeout per entry)
-      persistTranscript(meetingId, enriched);
     } catch (err) {
       console.error("Error in transcript-update:", err);
     }
@@ -266,12 +265,16 @@ io.on("connection", (socket) => {
       if (!meetingId) return;
       const meeting = meetings.get(meetingId);
       if (meeting) {
+        // Persist transcript before cleanup
+        persistMeetingTranscript(meetingId);
+
         // Clean up socketToMeeting for all participants in this meeting
         for (const [sid] of meeting) {
           socketToMeeting.delete(sid);
         }
         io.to(`meeting:${meetingId}`).emit("meeting-ended", { meetingId });
         meetings.delete(meetingId);
+        meetingTranscripts.delete(meetingId);
       }
     } catch (err) {
       console.error("Error in end-meeting:", err);
@@ -289,7 +292,10 @@ io.on("connection", (socket) => {
       if (meeting) {
         meeting.delete(socket.id);
         if (meeting.size === 0) {
+          // Last person left — persist transcript before cleanup
+          persistMeetingTranscript(meetingId);
           meetings.delete(meetingId);
+          meetingTranscripts.delete(meetingId);
         } else {
           broadcastParticipants(meetingId);
         }
@@ -309,7 +315,10 @@ io.on("connection", (socket) => {
         if (meeting) {
           meeting.delete(socket.id);
           if (meeting.size === 0) {
+            // Last person disconnected — persist transcript before cleanup
+            persistMeetingTranscript(meetingId);
             meetings.delete(meetingId);
+            meetingTranscripts.delete(meetingId);
           } else {
             broadcastParticipants(meetingId);
           }
