@@ -13,7 +13,7 @@ import {
   Alert,
 } from "@heroui/react";
 import Link from "next/link";
-import { ArrowLeft, Mic, MicOff, PhoneOff, Users } from "lucide-react";
+import { ArrowLeft, Mic, MicOff, PhoneOff, Users, Sparkles } from "lucide-react";
 import { io } from "socket.io-client";
 import SummaryMDX from "@/components/custom/SummaryMDX";
 
@@ -53,6 +53,7 @@ export default function MeetingPage({ params }) {
   const [localStream, setLocalStream] = useState(null);
   const [remoteStreams, setRemoteStreams] = useState({});
   const [speakingIds, setSpeakingIds] = useState(new Set());
+  const [generatingSummary, setGeneratingSummary] = useState(false);
 
   const peerConnections = useRef({});
   const iceCandidateQueues = useRef({});
@@ -641,6 +642,29 @@ export default function MeetingPage({ params }) {
     router.push("/dashboard");
   };
 
+  const handleGenerateSummary = async () => {
+    if (!transcript || transcript.length === 0) return;
+    setGeneratingSummary(true);
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript, meetingId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to generate summary");
+
+      const summaryText = data.summary || "";
+      await supabase.from("meetings").update({ summery: summaryText }).eq("id", id);
+      setMeeting((prev) => prev ? { ...prev, summery: summaryText } : prev);
+    } catch (err) {
+      console.error("Summary error:", err);
+      setCallError(`Summary generation failed: ${err.message}`);
+    } finally {
+      setGeneratingSummary(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -786,30 +810,32 @@ export default function MeetingPage({ params }) {
             })}
           </div>
 
-          {/* Controls */}
-          <div className="flex justify-center mt-auto pt-2">
-            <ButtonGroup>
-              <Button
-                isIconOnly
-                variant={isMuted ? "danger" : "outline"}
-                size="lg"
-                onPress={toggleMic}
-              >
-                {isMuted ? <MicOff className="size-5" /> : <Mic className="size-5" />}
-              </Button>
-              <Button variant="outline" size="lg">
-                <Users className="size-5" />
-                <span className="ml-1">{activeParticipants.length}</span>
-              </Button>
-              <Button variant="danger" size="lg" onPress={leaveMeeting}>
-                <PhoneOff className="size-5" />
-                <span className="ml-1">Leave</span>
-              </Button>
-            </ButtonGroup>
-          </div>
+          {/* Controls — only show when meeting is active */}
+          {meeting.status === "active" && (
+            <div className="flex justify-center mt-auto pt-2">
+              <ButtonGroup>
+                <Button
+                  isIconOnly
+                  variant={isMuted ? "danger" : "outline"}
+                  size="lg"
+                  onPress={toggleMic}
+                >
+                  {isMuted ? <MicOff className="size-5" /> : <Mic className="size-5" />}
+                </Button>
+                <Button variant="outline" size="lg">
+                  <Users className="size-5" />
+                  <span className="ml-1">{activeParticipants.length}</span>
+                </Button>
+                <Button variant="danger" size="lg" onPress={leaveMeeting}>
+                  <PhoneOff className="size-5" />
+                  <span className="ml-1">Leave</span>
+                </Button>
+              </ButtonGroup>
+            </div>
+          )}
         </div>
 
-        {/* Transcript Sidebar */}
+        {/* Transcript + Summary Sidebar */}
         <Card className="lg:w-80 xl:w-96 flex flex-col max-h-[600px]">
           <Card.Header className="px-4 pt-4 pb-2">
             <div className="flex items-center justify-between">
@@ -834,11 +860,31 @@ export default function MeetingPage({ params }) {
               ))
             )}
           </Card.Content>
-          {meeting.summery && (
-            <Card.Footer className="px-4 pb-4 pt-0 border-t border-default">
-              <SummaryMDX content={meeting.summery} />
-            </Card.Footer>
-          )}
+
+          {/* Summary Section */}
+          <div className="border-t border-default px-4 py-3">
+            {meeting.summery ? (
+              <div>
+                <p className="text-xs font-semibold text-muted mb-2 uppercase tracking-wide">Meeting Summary</p>
+                <SummaryMDX source={meeting.summery} />
+              </div>
+            ) : transcript.length > 0 ? (
+              <div className="text-center">
+                <p className="text-xs text-muted mb-2">No summary yet</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onPress={handleGenerateSummary}
+                  isPending={generatingSummary}
+                >
+                  <Sparkles className="size-4 mr-1" />
+                  {generatingSummary ? "Generating..." : "Generate Summary"}
+                </Button>
+              </div>
+            ) : (
+              <p className="text-xs text-muted text-center">Summary will appear after transcript is available</p>
+            )}
+          </div>
         </Card>
       </div>
     </div>

@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
+import { supabase } from "@/lib/supabase"
 
 export default function CallbackPage() {
   const { user, isLoaded } = useUser()
@@ -36,11 +37,27 @@ export default function CallbackPage() {
 
         if (data.isNew) {
           router.push("/onboarding")
-        } else {
+          return
+        }
+
+        const clerkId = user.id
+
+        const [studentRow, orgRow, mentorRow] = await Promise.all([
+          supabase.from("students").select("id").eq("clerk_id", clerkId).maybeSingle(),
+          supabase.from("organizations").select("id").eq("clerk_id", clerkId).maybeSingle(),
+          supabase.from("mentors").select("id").eq("clerk_id", clerkId).maybeSingle(),
+        ])
+
+        const hasRole = studentRow.data || orgRow.data || mentorRow.data
+
+        if (hasRole) {
           router.push("/dashboard")
+        } else {
+          router.push("/onboarding")
         }
       } catch (err) {
         console.error("Callback sync error:", err)
+        router.push("/onboarding")
       }
     }
 

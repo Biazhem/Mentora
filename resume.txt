@@ -1,1 +1,1 @@
-copilot --resume=2f47406d-90ab-4695-ba15-561614d2a343
+opencode -s ses_0415323ddffeN6jO1QRCOxusjy

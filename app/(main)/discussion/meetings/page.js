@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { supabase } from "@/lib/supabase";
 import { useOrgSelectorStore } from "@/stores/org-selector";
@@ -9,7 +9,6 @@ import { Button, InputGroup, Label, TextField } from "@heroui/react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Card, Chip, Alert } from "@heroui/react";
-import { useCacheStore } from "@/stores/cache";
 
 export default function Meeting() {
   const { user } = useUser();
@@ -54,51 +53,38 @@ export default function Meeting() {
     checkAdmin();
   }, [user, selectedOrganizationId]);
 
-  const cache = useCacheStore();
-
-  useEffect(() => {
-    async function fetchMeetings() {
-      if (!selectedOrganizationId) {
-        setLoading(false);
-        return;
-      }
-
-      const cacheKey = `meetings_${selectedOrganizationId}`;
-      const cached = cache.getData(cacheKey);
-      if (cached) {
-        setMeetings(cached);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from("meetings")
-          .select("*, organizations(org_name)")
-          .eq("org_id", selectedOrganizationId)
-          .order("started_at", { ascending: false });
-
-        if (error) {
-          console.error("Fetch meetings error:", error);
-          setMeetings([]);
-        } else if (Array.isArray(data) && data.length > 0) {
-          setMeetings(data);
-          cache.setData(cacheKey, data);
-        } else {
-          // No meetings found
-          setMeetings([]);
-        }
-      } catch (err) {
-        console.error("Unexpected error fetching meetings:", err);
-        setMeetings([]);
-      } finally {
-        setLoading(false);
-      }
+  const fetchMeetings = useCallback(async () => {
+    if (!selectedOrganizationId) {
+      setMeetings([]);
+      setLoading(false);
+      return;
     }
 
-    fetchMeetings();
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("meetings")
+        .select("*, organizations(org_name)")
+        .eq("org_id", selectedOrganizationId)
+        .order("started_at", { ascending: false });
+
+      if (error) {
+        console.error("Fetch meetings error:", error);
+        setMeetings([]);
+      } else {
+        setMeetings(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error("Unexpected error fetching meetings:", err);
+      setMeetings([]);
+    } finally {
+      setLoading(false);
+    }
   }, [selectedOrganizationId]);
+
+  useEffect(() => {
+    fetchMeetings();
+  }, [fetchMeetings]);
 
   const handleCreateMeeting = async () => {
     if (!user || !selectedOrganizationId) return;
@@ -134,6 +120,7 @@ export default function Meeting() {
         });
         setIsModalOpen(false);
         setMeetingTitle("");
+        await fetchMeetings();
         router.push(`/discussion/meetings/${meeting.id}`);
       }
     } catch (err) {
