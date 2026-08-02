@@ -595,6 +595,7 @@ export default function MeetingPage({ params }) {
   // ── STT ───────────────────────────────────────────────────────────────────
 
   const sttRestartTimerRef = useRef(null);
+  const sttLastEndRef = useRef(0);
 
   const initializeSTT = useCallback(() => {
     if (typeof window === "undefined" || recognitionRef.current) return;
@@ -607,7 +608,10 @@ export default function MeetingPage({ params }) {
     recognition.interimResults = false;
     recognition.lang = "en-US";
 
-    recognition.onstart = () => { sttRunningRef.current = true; };
+    recognition.onstart = () => {
+      sttRunningRef.current = true;
+      sttLastEndRef.current = 0;
+    };
 
     recognition.onresult = (event) => {
       let finalTranscript = "";
@@ -638,17 +642,25 @@ export default function MeetingPage({ params }) {
     recognition.onerror = (event) => {
       console.warn("STT error:", event.error);
       sttRunningRef.current = false;
+      // Don't restart on fatal errors
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        sttLastEndRef.current = Infinity;
+        return;
+      }
     };
 
     recognition.onend = () => {
       sttRunningRef.current = false;
-      // Auto-restart STT if meeting is still active and not muted
+      sttLastEndRef.current = Date.now();
+      // Auto-restart only if enough time passed since last start (debounce rapid cycles)
       if (sttRestartTimerRef.current) clearTimeout(sttRestartTimerRef.current);
       sttRestartTimerRef.current = setTimeout(() => {
-        if (recognitionRef.current && !sttRunningRef.current) {
+        const elapsed = Date.now() - sttLastEndRef.current;
+        // Only restart if it's been at least 1 second since last end (prevents mic open/close loop)
+        if (recognitionRef.current && !sttRunningRef.current && elapsed >= 1000) {
           try { recognitionRef.current.start(); } catch (_) {}
         }
-      }, 500);
+      }, 1000);
     };
 
     recognitionRef.current = recognition;
@@ -660,7 +672,10 @@ export default function MeetingPage({ params }) {
     if (!isMuted) {
       if (!recognitionRef.current) initializeSTT();
       if (recognitionRef.current && !sttRunningRef.current) {
-        try { recognitionRef.current.start(); } catch (_) {}
+        const elapsed = sttLastEndRef.current ? Date.now() - sttLastEndRef.current : Infinity;
+        if (elapsed >= 1000) {
+          try { recognitionRef.current.start(); } catch (_) {}
+        }
       }
     } else {
       if (recognitionRef.current && sttRunningRef.current) {
