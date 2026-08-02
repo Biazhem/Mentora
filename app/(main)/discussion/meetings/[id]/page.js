@@ -836,7 +836,7 @@ export default function MeetingPage({ params }) {
         </div>
 
         {/* Transcript + Summary Sidebar */}
-        <Card className="lg:w-80 xl:w-96 flex flex-col max-h-[600px]">
+        <Card className="lg:w-80 xl:w-96 flex flex-col">
           <Card.Header className="px-4 pt-4 pb-2">
             <div className="flex items-center justify-between">
               <Card.Title className="text-sm">Live Transcript</Card.Title>
