@@ -139,7 +139,7 @@ export default function OrganizationsPage() {
                 <div className="flex flex-1 flex-col gap-3">
                   <Card.Header className="gap-1">
                     <Card.Title className="pr-8">{org.org_name}</Card.Title>
-                    <Card.Description>{org.description}</Card.Description>
+                    <Card.Description className="line-clamp-3">{org.description}</Card.Description>
                   </Card.Header>
                   <Card.Footer className="mt-auto flex gap-1">
                     <Chip>{org.city || "Remote"}</Chip>
