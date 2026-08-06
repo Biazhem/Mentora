@@ -36,7 +36,7 @@ export function MentorDrawer({ mentor }) {
             <div className="mb-4">
               <p className="mb-2 text-sm font-medium text-foreground">Expertise</p>
               <div className="flex flex-wrap gap-2">
-                {expertiseList.map((skill, idx) => (
+                {expertiseList.slice(0,2).map((skill, idx) => (
                   <Chip key={idx} size="sm" variant="secondary">{skill}</Chip>
                 ))}
               </div>
