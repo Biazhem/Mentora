@@ -73,7 +73,7 @@ export default function Page() {
           </Link>
         ))}
       </div>
-      <div className="bg-[url('/grads.png')] bg-cover bg-center w-full h-full flex flex-col gap-2 p-4 pt-16">
+      <div className="bg-[url('/grads.png')] bg-cover bg-center w-full h-full hidden flex-col gap-2 p-4 pt-16 lg:flex">
         <Typography.Heading level={1} align="center">
           Welcome to the Mentora
         </Typography.Heading>
