@@ -19,11 +19,11 @@ export function MentorDrawer({ mentor }) {
         <Card className="flex cursor-pointer flex-col transition hover:shadow-sm">
           <Card.Header className="pb-4">
             <div className="flex items-center gap-4">
-              <Avatar size="lg">
+              <Avatar size="lg" >
                 {mentor.picture ? (
                   <Avatar.Image src={mentor.picture} alt={displayName} />
                 ) : null}
-                <Avatar.Fallback>{displayName?.charAt(0) || "?"}</Avatar.Fallback>
+                <Avatar.Fallback className="bg-blue-500 text-white text-2xl">{displayName?.charAt(0) || "?"}</Avatar.Fallback>
               </Avatar>
               <div>
                 <Card.Title className="text-lg">{displayName}</Card.Title>

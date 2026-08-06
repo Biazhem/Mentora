@@ -66,7 +66,7 @@ export function MinimaDashboard({ children }) {
     "U";
 
   return (
-    <div className="w-full min-h-svh max-h-full flex bg-accent-soft dark:bg-accent-soft-hover">
+    <div className="w-full min-h-svh flex bg-accent-soft dark:bg-accent-soft-hover">
       {/* Sidebar */}
       <aside className="hidden lg:flex lg:w-20 lg:fixed lg:h-screen py-8 flex-col items-center justify-between">
         {/* Navigation Items */}
